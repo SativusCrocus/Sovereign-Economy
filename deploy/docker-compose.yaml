@@ -1,0 +1,252 @@
+# deploy/docker-compose.yaml
+# DAES local/dev deployment. Only mcp-gateway is published on the host
+# (8443/TLS). All inter-service traffic rides the isolated `daes-net`
+# bridge. Resource limits mirror spec/components.yaml::services.
+#
+# Bring up: docker compose -f deploy/docker-compose.yaml up -d --build
+# Tear down: docker compose -f deploy/docker-compose.yaml down -v
+
+name: daes
+
+x-common-env: &common-env
+  DAES_SPEC_PATH: /spec/components.yaml
+  TZ: UTC
+  LOG_FORMAT: json
+
+networks:
+  daes-net:
+    driver: bridge
+    internal: false     # egress needed for Weaviate model pulls, RPC endpoints
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+volumes:
+  weaviate-data:
+  prometheus-data:
+  grafana-data:
+  chain-data:
+  ipfs-data:
+
+services:
+
+  # -------------------------------------------------------------------------
+  # Layer 1 — GraphRAG indexer (Weaviate + ingester sidecar share the service)
+  # -------------------------------------------------------------------------
+  graph-rag-indexer:
+    image: cr.weaviate.io/semitechnologies/weaviate:1.24.20
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "false"
+      AUTHENTICATION_APIKEY_ENABLED: "true"
+      AUTHENTICATION_APIKEY_ALLOWED_KEYS: ${WEAVIATE_API_KEY:?WEAVIATE_API_KEY required}
+      AUTHENTICATION_APIKEY_USERS: daes-indexer
+      PERSISTENCE_DATA_PATH: /var/lib/weaviate
+      ENABLE_MODULES: "text2vec-transformers"
+      DEFAULT_VECTORIZER_MODULE: "none"
+      CLUSTER_HOSTNAME: node1
+    volumes:
+      - weaviate-data:/var/lib/weaviate
+      - ../spec:/spec:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/v1/.well-known/ready || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    deploy:
+      resources:
+        limits: { cpus: "2.0", memory: 4G }
+        reservations: { cpus: "1.0", memory: 2G }
+      replicas: 2
+    networks: [daes-net]
+
+  # -------------------------------------------------------------------------
+  # Layer 1 — 1000-agent swarm runtime (Python 3.12)
+  # -------------------------------------------------------------------------
+  agent-swarm-runtime:
+    build:
+      context: ../services/agent-swarm-runtime
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      WEAVIATE_URL: http://graph-rag-indexer:8080
+      WEAVIATE_API_KEY: ${WEAVIATE_API_KEY:?WEAVIATE_API_KEY required}
+      MCP_GATEWAY_URL: https://mcp-gateway:8443
+      DRAND_URL: https://api.drand.sh/public/latest
+      SEED: ${DAES_SEED:-0xDEADBEEF}
+    volumes:
+      - ../spec:/spec:ro
+    depends_on:
+      graph-rag-indexer: { condition: service_healthy }
+      mcp-gateway:       { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:9100/healthz', timeout=2).status==200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    deploy:
+      resources:
+        limits: { cpus: "8.0", memory: 16G }
+        reservations: { cpus: "2.0", memory: 4G }
+    networks: [daes-net]
+
+  # -------------------------------------------------------------------------
+  # Layer 2 — Goose MCP executor (Node 20)
+  # -------------------------------------------------------------------------
+  goose-executor:
+    build:
+      context: ../services/goose-executor
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      MCP_GATEWAY_URL: https://mcp-gateway:8443
+      MCP_JWT: ${MCP_JWT:?MCP_JWT required}
+      BASE_RPC_URL: ${BASE_RPC_URL:?}
+      OP_RPC_URL: ${OP_RPC_URL:?}
+      LOCAL_RPC_URL: http://blockchain-node:8545
+    volumes:
+      - ../spec:/spec:ro
+    depends_on:
+      mcp-gateway:      { condition: service_healthy }
+      blockchain-node:  { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:9200/healthz',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    deploy:
+      resources:
+        limits: { cpus: "2.0", memory: 2G }
+        reservations: { cpus: "0.5", memory: 512M }
+    networks: [daes-net]
+
+  # -------------------------------------------------------------------------
+  # Layer 2 — MCP gateway (FastAPI, mTLS, PUBLIC :8443)
+  # -------------------------------------------------------------------------
+  mcp-gateway:
+    build:
+      context: ../services/mcp-gateway
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      TLS_CERT_PATH: /tls/server.crt
+      TLS_KEY_PATH: /tls/server.key
+      JWT_SECRET: ${MCP_JWT_SECRET:?MCP_JWT_SECRET required}
+      UPSTREAM_TENDERLY: ${TENDERLY_URL:-}
+      UPSTREAM_ANVIL:    http://blockchain-node:8545
+      IPFS_API_URL: http://ipfs:5001
+    volumes:
+      - ../spec:/spec:ro
+      - ./tls:/tls:ro
+    ports:
+      - "8443:8443"
+    healthcheck:
+      test: ["CMD", "curl", "-kfsS", "https://localhost:8443/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    deploy:
+      resources:
+        limits: { cpus: "1.0", memory: 1G }
+        reservations: { cpus: "0.25", memory: 256M }
+      replicas: 2
+    networks: [daes-net]
+
+  # -------------------------------------------------------------------------
+  # Layer 4 — Observability
+  # -------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      - --web.enable-lifecycle
+    volumes:
+      - ../config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits: { cpus: "0.5", memory: 1G }
+    networks: [daes-net]
+
+  grafana:
+    image: grafana/grafana:11.3.1
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD required}
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ../config/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      prometheus: { condition: service_healthy }
+    deploy:
+      resources:
+        limits: { cpus: "0.5", memory: 1G }
+    networks: [daes-net]
+
+  # -------------------------------------------------------------------------
+  # Layer 4 — Local chain + IPFS pin cluster
+  # -------------------------------------------------------------------------
+  blockchain-node:
+    image: ethereum/client-go:v1.14.12
+    restart: unless-stopped
+    command:
+      - --dev
+      - --dev.period=1
+      - --http
+      - --http.addr=0.0.0.0
+      - --http.api=eth,net,web3,debug,txpool
+      - --http.corsdomain=*
+      - --http.vhosts=*
+      - --ws
+      - --ws.addr=0.0.0.0
+      - --ws.api=eth,net,web3,debug
+      - --datadir=/chain
+    volumes:
+      - chain-data:/chain
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- --post-data='{\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"id\":1}' --header='Content-Type: application/json' http://localhost:8545 | grep -q result"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+    deploy:
+      resources:
+        limits: { cpus: "2.0", memory: 4G }
+    networks: [daes-net]
+
+  ipfs:
+    image: ipfs/kubo:v0.30.0
+    restart: unless-stopped
+    volumes:
+      - ipfs-data:/data/ipfs
+    healthcheck:
+      test: ["CMD", "ipfs", "id"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    deploy:
+      resources:
+        limits: { cpus: "0.5", memory: 1G }
+    networks: [daes-net]

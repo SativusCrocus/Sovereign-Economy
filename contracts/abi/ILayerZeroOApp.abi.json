@@ -1,0 +1,140 @@
+[
+  {
+    "type": "event",
+    "name": "MessageSent",
+    "anonymous": false,
+    "inputs": [
+      { "name": "guid",   "type": "bytes32", "indexed": true,  "internalType": "bytes32" },
+      { "name": "dstEid", "type": "uint32",  "indexed": true,  "internalType": "uint32" },
+      { "name": "nonce",  "type": "uint64",  "indexed": false, "internalType": "uint64" }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "MessageReceived",
+    "anonymous": false,
+    "inputs": [
+      { "name": "guid",   "type": "bytes32", "indexed": true,  "internalType": "bytes32" },
+      { "name": "srcEid", "type": "uint32",  "indexed": true,  "internalType": "uint32" },
+      { "name": "sender", "type": "bytes32", "indexed": false, "internalType": "bytes32" },
+      { "name": "nonce",  "type": "uint64",  "indexed": false, "internalType": "uint64" }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "endpoint",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [ { "name": "", "type": "address", "internalType": "address" } ]
+  },
+  {
+    "type": "function",
+    "name": "peers",
+    "stateMutability": "view",
+    "inputs": [ { "name": "eid", "type": "uint32", "internalType": "uint32" } ],
+    "outputs": [ { "name": "", "type": "bytes32", "internalType": "bytes32" } ]
+  },
+  {
+    "type": "function",
+    "name": "setPeer",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      { "name": "eid",  "type": "uint32",  "internalType": "uint32" },
+      { "name": "peer", "type": "bytes32", "internalType": "bytes32" }
+    ],
+    "outputs": []
+  },
+  {
+    "type": "function",
+    "name": "quote",
+    "stateMutability": "view",
+    "inputs": [
+      {
+        "name": "params",
+        "type": "tuple",
+        "internalType": "struct ILayerZeroOApp.MessagingParams",
+        "components": [
+          { "name": "dstEid",       "type": "uint32",  "internalType": "uint32" },
+          { "name": "receiver",     "type": "bytes32", "internalType": "bytes32" },
+          { "name": "message",      "type": "bytes",   "internalType": "bytes" },
+          { "name": "options",      "type": "bytes",   "internalType": "bytes" },
+          { "name": "payInLzToken", "type": "bool",    "internalType": "bool" }
+        ]
+      },
+      { "name": "sender", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct ILayerZeroOApp.MessagingFee",
+        "components": [
+          { "name": "nativeFee",  "type": "uint256", "internalType": "uint256" },
+          { "name": "lzTokenFee", "type": "uint256", "internalType": "uint256" }
+        ]
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "send",
+    "stateMutability": "payable",
+    "inputs": [
+      {
+        "name": "params",
+        "type": "tuple",
+        "internalType": "struct ILayerZeroOApp.MessagingParams",
+        "components": [
+          { "name": "dstEid",       "type": "uint32",  "internalType": "uint32" },
+          { "name": "receiver",     "type": "bytes32", "internalType": "bytes32" },
+          { "name": "message",      "type": "bytes",   "internalType": "bytes" },
+          { "name": "options",      "type": "bytes",   "internalType": "bytes" },
+          { "name": "payInLzToken", "type": "bool",    "internalType": "bool" }
+        ]
+      },
+      { "name": "refundAddress", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct ILayerZeroOApp.MessagingReceipt",
+        "components": [
+          { "name": "guid",  "type": "bytes32", "internalType": "bytes32" },
+          { "name": "nonce", "type": "uint64",  "internalType": "uint64" },
+          {
+            "name": "fee",
+            "type": "tuple",
+            "internalType": "struct ILayerZeroOApp.MessagingFee",
+            "components": [
+              { "name": "nativeFee",  "type": "uint256", "internalType": "uint256" },
+              { "name": "lzTokenFee", "type": "uint256", "internalType": "uint256" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "lzReceive",
+    "stateMutability": "payable",
+    "inputs": [
+      {
+        "name": "origin",
+        "type": "tuple",
+        "internalType": "struct ILayerZeroOApp.Origin",
+        "components": [
+          { "name": "srcEid", "type": "uint32",  "internalType": "uint32" },
+          { "name": "sender", "type": "bytes32", "internalType": "bytes32" },
+          { "name": "nonce",  "type": "uint64",  "internalType": "uint64" }
+        ]
+      },
+      { "name": "guid",      "type": "bytes32", "internalType": "bytes32" },
+      { "name": "message",   "type": "bytes",   "internalType": "bytes" },
+      { "name": "executor",  "type": "address", "internalType": "address" },
+      { "name": "extraData", "type": "bytes",   "internalType": "bytes" }
+    ],
+    "outputs": []
+  }
+]

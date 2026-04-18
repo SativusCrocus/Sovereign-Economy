@@ -1,0 +1,17 @@
+{
+  "name": "daes-contracts",
+  "version": "1.0.0",
+  "private": true,
+  "description": "DAES Solidity interface stubs (interfaces only, no implementations).",
+  "scripts": {
+    "compile": "hardhat compile",
+    "extract-abi": "ts-node scripts/extract-abi.ts",
+    "build": "npm run compile && npm run extract-abi"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.0"
+  }
+}

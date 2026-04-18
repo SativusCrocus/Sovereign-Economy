@@ -1,0 +1,81 @@
+[
+  {
+    "type": "event",
+    "name": "UserOpValidated",
+    "anonymous": false,
+    "inputs": [
+      { "name": "sender",         "type": "address", "indexed": true,  "internalType": "address" },
+      { "name": "nonce",          "type": "uint256", "indexed": true,  "internalType": "uint256" },
+      { "name": "validationData", "type": "uint256", "indexed": false, "internalType": "uint256" }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "Executed",
+    "anonymous": false,
+    "inputs": [
+      { "name": "target", "type": "address", "indexed": true,  "internalType": "address" },
+      { "name": "value",  "type": "uint256", "indexed": false, "internalType": "uint256" },
+      { "name": "data",   "type": "bytes",   "indexed": false, "internalType": "bytes" }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "archetype",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [
+      { "name": "", "type": "uint8", "internalType": "enum IAgentAccount.Archetype" }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "validateUserOp",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      {
+        "name": "userOp",
+        "type": "tuple",
+        "internalType": "struct IAgentAccount.PackedUserOperation",
+        "components": [
+          { "name": "sender",             "type": "address", "internalType": "address" },
+          { "name": "nonce",              "type": "uint256", "internalType": "uint256" },
+          { "name": "initCode",           "type": "bytes",   "internalType": "bytes" },
+          { "name": "callData",           "type": "bytes",   "internalType": "bytes" },
+          { "name": "accountGasLimits",   "type": "bytes32", "internalType": "bytes32" },
+          { "name": "preVerificationGas", "type": "uint256", "internalType": "uint256" },
+          { "name": "gasFees",            "type": "bytes32", "internalType": "bytes32" },
+          { "name": "paymasterAndData",   "type": "bytes",   "internalType": "bytes" },
+          { "name": "signature",          "type": "bytes",   "internalType": "bytes" }
+        ]
+      },
+      { "name": "userOpHash",           "type": "bytes32", "internalType": "bytes32" },
+      { "name": "missingAccountFunds",  "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [
+      { "name": "validationData", "type": "uint256", "internalType": "uint256" }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "execute",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      { "name": "target", "type": "address", "internalType": "address" },
+      { "name": "value",  "type": "uint256", "internalType": "uint256" },
+      { "name": "data",   "type": "bytes",   "internalType": "bytes" }
+    ],
+    "outputs": []
+  },
+  {
+    "type": "function",
+    "name": "executeBatch",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      { "name": "targets", "type": "address[]", "internalType": "address[]" },
+      { "name": "values",  "type": "uint256[]", "internalType": "uint256[]" },
+      { "name": "datas",   "type": "bytes[]",   "internalType": "bytes[]" }
+    ],
+    "outputs": []
+  }
+]

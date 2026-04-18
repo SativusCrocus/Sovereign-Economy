@@ -1,0 +1,16 @@
+# Secrets & local state
+deploy/.env
+deploy/tls/*.key
+deploy/tls/*.crt
+# Node / Python
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+# Hardhat
+contracts/cache/
+contracts/artifacts/
+contracts/typechain-types/
+# Editor
+.vscode/
+.idea/

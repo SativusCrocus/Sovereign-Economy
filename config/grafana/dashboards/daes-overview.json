@@ -1,0 +1,29 @@
+{
+  "uid": "daes-overview",
+  "title": "DAES Overview",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "15s",
+  "time": { "from": "now-1h", "to": "now" },
+  "timezone": "utc",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Swarm signals / min",
+      "targets": [{ "expr": "sum(rate(daes_swarm_signals_total[1m])) * 60" }],
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 }
+    },
+    {
+      "type": "stat",
+      "title": "Live agents",
+      "targets": [{ "expr": "daes_swarm_agents" }],
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 }
+    },
+    {
+      "type": "timeseries",
+      "title": "State-hash low64 (determinism probe)",
+      "targets": [{ "expr": "daes_swarm_tick_hash_low64" }],
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 }
+    }
+  ]
+}

@@ -1,0 +1,374 @@
+# spec/components.yaml
+# Single source of truth for the Decentralized Autonomous Economic System (DAES).
+# Every service loads this file at boot. No magic constants live outside it.
+# Schema version follows SemVer; bump MAJOR on breaking changes to any section.
+
+version: "1.0.0"
+system:
+  name: DAES
+  description: Decentralized Autonomous Economic System — 4-layer GraphRAG swarm + MCP execution + multi-sig bridge + containerized infra.
+  determinism_contract: "Given identical seed + spec hash, every tick produces identical keccak256(state_root)."
+
+# ---------------------------------------------------------------------------
+# LAYER 1 — Mirofish Simulation Swarm (GraphRAG + 1000-agent population)
+# ---------------------------------------------------------------------------
+graph_rag:
+  schema:
+    nodes:
+      - name: MarketActor
+        properties: [id, type, jurisdiction, capital_usd, reputation]
+      - name: Commodity
+        properties: [id, hs_code, unit, spot_usd, volatility_30d]
+      - name: TradeRoute
+        properties: [id, origin_port, dest_port, transit_days, congestion_score]
+      - name: RegulatorEvent
+        properties: [id, issuer, jurisdiction, effective_ts, severity]
+    edges:
+      - name: TRANSACTS
+        from: MarketActor
+        to: Commodity
+        properties: [volume, price_usd, ts]
+      - name: COMPETES
+        from: MarketActor
+        to: MarketActor
+        properties: [market_segment, intensity]
+      - name: REGULATES
+        from: RegulatorEvent
+        to: MarketActor
+        properties: [compliance_deadline]
+      - name: DISRUPTS
+        from: RegulatorEvent
+        to: TradeRoute
+        properties: [disruption_pct, expected_duration_days]
+  sources:
+    - name: world_bank_trade_api
+      endpoint: https://api.worldbank.org/v2/en/indicator
+      auth: none
+      rate_limit_rps: 5
+      fallback:
+        name: wits_bulk_download
+        endpoint: https://wits.worldbank.org/data/public
+    - name: chainlink_price_feeds
+      endpoint: "onchain://base/0x...AggregatorV3"
+      fallback:
+        name: pyth_chronicle_uniswap_twap_median
+        description: "3-of-3 median over Pyth Hermes, Chronicle oracles, and Uniswap V3 30-min TWAP"
+        endpoints:
+          - https://hermes.pyth.network/api
+          - "onchain://base/chronicle"
+          - "onchain://base/uniswap-v3-twap"
+    - name: un_comtrade
+      endpoint: https://comtradeapi.un.org/public/v1
+      rate_limit_rps: 1
+      fallback:
+        name: comtrade_bulk_csv
+        endpoint: https://comtradeapi.un.org/files
+    - name: ais_ship_telemetry
+      endpoint: "wss://stream.aisstream.io/v0/stream"
+      auth: api_key
+      fallback:
+        name: noaa_ais_archive
+        endpoint: https://marinecadastre.gov/ais
+  embedding:
+    primary:
+      model: text-embedding-3-large
+      provider: openai
+      dim: 3072
+    fallback:
+      model: BAAI/bge-large-en-v1.5
+      provider: ollama_local
+      native_dim: 1024
+      adapter:
+        kind: frozen_linear_projection
+        path: services/graph-rag-indexer/adapters/bge_to_3072.pt
+        output_dim: 3072
+        license: Apache-2.0
+  chunking:
+    strategy: semantic
+    tokens_per_chunk: 512
+    overlap_tokens: 128
+    tokenizer: cl100k_base
+  retrieval:
+    top_k: 20
+    rerank:
+      algorithm: mmr
+      lambda: 0.5
+    cosine_threshold: 0.72
+    vector_db:
+      primary: { kind: weaviate, version: "1.24", class_prefix: DAES_ }
+      fallback: { kind: qdrant, version: "1.9", collection_prefix: daes_ }
+
+# ---------------------------------------------------------------------------
+# Agent Swarm (N=1000, 5 archetypes, deterministic FSM)
+# ---------------------------------------------------------------------------
+agent_swarm:
+  population: 1000
+  archetypes:
+    - name: Speculator
+      pct: 20
+      beta_range: [1.8, 4.2]
+      utility_bias: { momentum: 0.7, carry: 0.2, mean_reversion: 0.1 }
+    - name: Arbitrageur
+      pct: 25
+      beta_range: [0.8, 2.0]
+      utility_bias: { momentum: 0.2, carry: 0.3, mean_reversion: 0.5 }
+    - name: Sovereign
+      pct: 10
+      beta_range: [0.1, 0.6]
+      utility_bias: { momentum: 0.1, carry: 0.1, mean_reversion: 0.8 }
+    - name: MarketMaker
+      pct: 30
+      beta_range: [0.4, 1.2]
+      utility_bias: { momentum: 0.2, carry: 0.6, mean_reversion: 0.2 }
+    - name: BlackSwan
+      pct: 15
+      beta_range: [2.5, 4.2]
+      utility_bias: { momentum: 0.1, carry: 0.1, mean_reversion: 0.0, tail_hunt: 0.8 }
+  risk_distribution:
+    family: lognormal
+    mu_of_ln_beta: 0.0
+    sigma_of_ln_beta: 0.65
+  fsm:
+    states: [OBSERVE, REASON, SIGNAL, WAIT]
+    transitions:
+      - { from: OBSERVE, to: REASON, on: tick_mod_4_eq_1 }
+      - { from: REASON, to: SIGNAL, on: confidence_gte_threshold }
+      - { from: REASON, to: WAIT, on: confidence_lt_threshold }
+      - { from: SIGNAL, to: WAIT, on: signal_emitted }
+      - { from: WAIT, to: OBSERVE, on: next_tick }
+  utility:
+    family: cobb_douglas
+    form: "U(x,y) = x^alpha * y^(1-alpha)"
+    alpha_source: per_agent_archetype_bias
+  memory:
+    buffer: sliding_window
+    window_ticks: 48
+    serialization: msgpack
+  determinism:
+    seed_source:
+      primary: chainlink_vrf
+      fallback: drand_league_of_entropy
+      endpoint: https://api.drand.sh/public/latest
+    state_hash: keccak256
+    assertion: "hash(sorted_agent_states) == expected_hash_for_seed_and_tick"
+
+# ---------------------------------------------------------------------------
+# Consensus Protocol
+# ---------------------------------------------------------------------------
+consensus:
+  fire_threshold_pct: 67
+  sigma_band: 1.5
+  signals: [BUY, SELL, HOLD, ESCALATE_TO_GUARDIAN]
+  tiebreak: HOLD
+  aggregation: median_with_trimmed_mean_fallback
+  emission_rate_limit_per_minute: 6
+
+# ---------------------------------------------------------------------------
+# LAYER 2 — Goose Execution Layer (MCP tools)
+# ---------------------------------------------------------------------------
+mcp_gateway:
+  bind: "0.0.0.0:8443"
+  tls: { enabled: true, min_version: "TLS1.3", cert_path: /tls/server.crt, key_path: /tls/server.key }
+  auth: { scheme: jwt_hs256, scope_per_tool: true }
+
+mcp_tools:
+  - name: wallet_sign_transaction
+    version: "1.0"
+    eip: 4337
+    input_schema:
+      type: object
+      required: [agent_id, user_op, chain_id]
+      properties:
+        agent_id: { type: string, pattern: "^agent-(Speculator|Arbitrageur|Sovereign|MarketMaker|BlackSwan)-[0-9]{4}$" }
+        user_op:
+          type: object
+          properties:
+            sender: { type: string }
+            nonce: { type: string }
+            callData: { type: string }
+            callGasLimit: { type: string }
+            verificationGasLimit: { type: string }
+            preVerificationGas: { type: string }
+            maxFeePerGas: { type: string }
+            maxPriorityFeePerGas: { type: string }
+            paymasterAndData: { type: string }
+            signature: { type: string }
+        chain_id: { type: integer, enum: [8453, 10] }
+    output_schema:
+      type: object
+      properties:
+        user_op_hash: { type: string }
+        signed_user_op: { type: object }
+    max_latency_ms: 2500
+    retry: { policy: exponential, base_ms: 250, max_attempts: 3, jitter: true }
+    required_permissions: [sign_tx, agent_scoped]
+
+  - name: supply_chain_api_query
+    version: "1.0"
+    input_schema:
+      type: object
+      required: [carrier, query_type, params]
+      properties:
+        carrier: { type: string, enum: [dhl, maersk, customs, gdelt_fallback] }
+        query_type: { type: string, enum: [tracking, manifest, tariff] }
+        params: { type: object }
+    output_schema:
+      type: object
+      properties:
+        records: { type: array }
+        source: { type: string }
+    max_latency_ms: 4000
+    retry: { policy: exponential, base_ms: 500, max_attempts: 3, jitter: true }
+    required_permissions: [read_logistics]
+
+  - name: contract_call_simulate
+    version: "1.0"
+    input_schema:
+      type: object
+      required: [chain_id, block_tag, from, to, data]
+      properties:
+        chain_id: { type: integer, enum: [8453, 10, 31337] }
+        block_tag: { type: string }
+        from: { type: string }
+        to: { type: string }
+        value: { type: string, default: "0x0" }
+        data: { type: string }
+    output_schema:
+      type: object
+      properties:
+        success: { type: boolean }
+        gas_used: { type: integer }
+        return_data: { type: string }
+        trace: { type: array }
+    max_latency_ms: 3000
+    retry: { policy: exponential, base_ms: 250, max_attempts: 3, jitter: true }
+    required_permissions: [simulate]
+    provider:
+      primary: tenderly_fork
+      fallback: anvil_local_fork
+
+  - name: cross_chain_bridge_initiate
+    version: "1.0"
+    protocol: layerzero_v2
+    input_schema:
+      type: object
+      required: [src_chain_id, dst_chain_id, dst_eid, oapp_address, message_bytes]
+      properties:
+        src_chain_id: { type: integer, enum: [8453, 10] }
+        dst_chain_id: { type: integer, enum: [8453, 10] }
+        dst_eid: { type: integer, enum: [30184, 30111] }
+        oapp_address: { type: string }
+        message_bytes: { type: string }
+        options_bytes: { type: string }
+    output_schema:
+      type: object
+      properties:
+        guid: { type: string }
+        nonce: { type: integer }
+    max_latency_ms: 8000
+    retry: { policy: exponential, base_ms: 1000, max_attempts: 3, jitter: true }
+    required_permissions: [bridge_initiate]
+
+  - name: audit_log_write
+    version: "1.0"
+    input_schema:
+      type: object
+      required: [subject, event_type, payload]
+      properties:
+        subject: { type: string }
+        event_type: { type: string }
+        payload: { type: object }
+    output_schema:
+      type: object
+      properties:
+        cid: { type: string }
+        pinned_by: { type: array, items: { type: string } }
+    max_latency_ms: 5000
+    retry: { policy: exponential, base_ms: 500, max_attempts: 3, jitter: true }
+    required_permissions: [audit_write]
+    storage:
+      primary: ipfs_kubo
+      pinners: [filecoin_web3storage_fallback, local_ipfs_cluster]
+
+# ---------------------------------------------------------------------------
+# Agent ↔ Smart Account Binding (EIP-4337)
+# ---------------------------------------------------------------------------
+account_abstraction:
+  standard: EIP-4337
+  entrypoint_version: "0.7"
+  entrypoint_address: "0x0000000071727De22E5E9d8BAf0edAc6f37da032"
+  account_factory:
+    primary: safe_core_sdk
+    fallback: reference_minimal_account
+  bundler:
+    primary: { name: pimlico, endpoint_template: "https://api.pimlico.io/v2/{chain}/rpc" }
+    fallback: { name: stackup_self_hosted, endpoint: "http://stackup:3000" }
+  archetype_to_smart_account:
+    - archetype: Speculator
+      factory_salt: "0x5370656375...0000"
+    - archetype: Arbitrageur
+      factory_salt: "0x41726269...0000"
+    - archetype: Sovereign
+      factory_salt: "0x536f7665...0000"
+    - archetype: MarketMaker
+      factory_salt: "0x4d61726b...0000"
+    - archetype: BlackSwan
+      factory_salt: "0x426c6163...0000"
+
+# ---------------------------------------------------------------------------
+# LAYER 3 — Decision-to-Action Bridge
+# ---------------------------------------------------------------------------
+bridge_fsm:
+  states:
+    - SWARM_SIGNAL_RECEIVED
+    - SIGNAL_VALIDATED
+    - THRESHOLD_CHECK
+    - MULTI_SIG_STAGED
+    - GUARDIAN_TIMEOUT
+    - EXECUTED
+    - REJECTED
+  transitions:
+    - { from: SWARM_SIGNAL_RECEIVED, to: SIGNAL_VALIDATED, on: schema_ok_and_signature_valid }
+    - { from: SWARM_SIGNAL_RECEIVED, to: REJECTED, on: schema_or_signature_bad }
+    - { from: SIGNAL_VALIDATED, to: THRESHOLD_CHECK, on: always }
+    - { from: THRESHOLD_CHECK, to: MULTI_SIG_STAGED, on: quorum_ge_67_and_sigma_band_ok }
+    - { from: THRESHOLD_CHECK, to: REJECTED, on: quorum_insufficient }
+    - { from: MULTI_SIG_STAGED, to: EXECUTED, on: three_of_five_signatures_collected }
+    - { from: MULTI_SIG_STAGED, to: GUARDIAN_TIMEOUT, on: elapsed_gt_3600s }
+    - { from: GUARDIAN_TIMEOUT, to: REJECTED, on: no_override }
+    - { from: GUARDIAN_TIMEOUT, to: MULTI_SIG_STAGED, on: guardian_override_valid }
+  guardian_timeout_s: 3600
+  execution_timelock_s: 86400
+
+multi_sig:
+  threshold: 3
+  signer_count: 5
+  signers:
+    - { slot: 1, kind: smart_contract, role: AgentClassA, weight: 1 }
+    - { slot: 2, kind: smart_contract, role: AgentClassB, weight: 1 }
+    - { slot: 3, kind: eoa, role: HumanGuardian, weight: 1 }
+    - { slot: 4, kind: smart_contract, role: TimeLock86400, weight: 1 }
+    - { slot: 5, kind: snapshot_strategy, role: DAOSnapshot, weight: 1 }
+
+circuit_breaker:
+  failure_count_threshold: 2
+  window_seconds: 600
+  action: auto_pause
+  reset: guardian_or_dao_vote
+  observed_events: [tx_revert, bridge_timeout, oracle_stale]
+
+# ---------------------------------------------------------------------------
+# LAYER 4 — Deployment Infrastructure (service resource profile)
+# ---------------------------------------------------------------------------
+services:
+  graph_rag_indexer:   { cpu: 2, ram_gb: 4,  image: weaviate_1_24 }
+  agent_swarm_runtime: { cpu: 8, ram_gb: 16, image: daes_agent_swarm:latest, gpu_tier: a10_or_a100 }
+  goose_executor:      { cpu: 2, ram_gb: 2,  image: daes_goose_executor:latest }
+  mcp_gateway:         { cpu: 1, ram_gb: 1,  image: daes_mcp_gateway:latest, public: true, port: 8443 }
+  metrics:             { cpu: 1, ram_gb: 2,  image: prom_grafana_sidecar:latest }
+  blockchain_node:     { cpu: 2, ram_gb: 4,  image: ethereum/client-go:v1.14 }
+
+chains:
+  - { name: Base,     chain_id: 8453, lz_eid: 30184, rpc_env: BASE_RPC_URL }
+  - { name: Optimism, chain_id: 10,   lz_eid: 30111, rpc_env: OP_RPC_URL }
+  - { name: LocalDev, chain_id: 31337, lz_eid: 0,    rpc_env: LOCAL_RPC_URL }

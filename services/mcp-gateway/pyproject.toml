@@ -1,0 +1,17 @@
+[project]
+name = "daes-mcp-gateway"
+version = "1.0.0"
+description = "mTLS-fronted MCP tool gateway for DAES."
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi==0.115.5",
+  "uvicorn[standard]==0.32.1",
+  "pydantic==2.9.2",
+  "pyjwt==2.10.1",
+  "pyyaml==6.0.2",
+  "httpx==0.27.2",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]

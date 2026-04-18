@@ -1,0 +1,22 @@
+# config/alerts.yml
+# Prometheus alert rules — reference from prometheus.yml with `rule_files`.
+groups:
+  - name: daes-safety
+    rules:
+      - alert: CircuitBreakerTripped
+        expr: daes_circuit_breaker_paused == 1
+        for: 0m
+        labels: { severity: critical }
+        annotations: { summary: "DAES circuit breaker tripped" }
+
+      - alert: SwarmSignalStalled
+        expr: rate(daes_swarm_signals_total[5m]) == 0
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: "No swarm signals emitted in last 10 minutes" }
+
+      - alert: DeterminismDrift
+        expr: changes(daes_swarm_tick_hash_low64[5m]) == 0 and daes_swarm_agents > 0
+        for: 2m
+        labels: { severity: warning }
+        annotations: { summary: "Swarm state hash is frozen — possible deadlock" }

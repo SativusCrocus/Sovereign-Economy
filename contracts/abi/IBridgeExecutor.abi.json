@@ -1,0 +1,112 @@
+[
+  {
+    "type": "event",
+    "name": "SignalReceived",
+    "anonymous": false,
+    "inputs": [
+      { "name": "signalId",  "type": "bytes32", "indexed": true,  "internalType": "bytes32" },
+      { "name": "kind",      "type": "uint8",   "indexed": false, "internalType": "enum IBridgeExecutor.SignalKind" },
+      { "name": "proofHash", "type": "bytes32", "indexed": false, "internalType": "bytes32" }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "StateTransitioned",
+    "anonymous": false,
+    "inputs": [
+      { "name": "signalId", "type": "bytes32", "indexed": true,  "internalType": "bytes32" },
+      { "name": "from",     "type": "uint8",   "indexed": false, "internalType": "enum IBridgeExecutor.FSMState" },
+      { "name": "to",       "type": "uint8",   "indexed": false, "internalType": "enum IBridgeExecutor.FSMState" }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "TimeoutTriggered",
+    "anonymous": false,
+    "inputs": [
+      { "name": "signalId", "type": "bytes32", "indexed": true,  "internalType": "bytes32" },
+      { "name": "elapsed",  "type": "uint64",  "indexed": false, "internalType": "uint64" }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "onSwarmSignal",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      { "name": "signalId",  "type": "bytes32", "internalType": "bytes32" },
+      { "name": "kind",      "type": "uint8",   "internalType": "enum IBridgeExecutor.SignalKind" },
+      { "name": "proofHash", "type": "bytes32", "internalType": "bytes32" }
+    ],
+    "outputs": []
+  },
+  {
+    "type": "function",
+    "name": "validate",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      { "name": "signalId",    "type": "bytes32", "internalType": "bytes32" },
+      { "name": "quorumProof", "type": "bytes",   "internalType": "bytes" }
+    ],
+    "outputs": []
+  },
+  {
+    "type": "function",
+    "name": "thresholdCheck",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      { "name": "signalId",  "type": "bytes32", "internalType": "bytes32" },
+      { "name": "quorumBps", "type": "uint16",  "internalType": "uint16" },
+      { "name": "sigmaE6",   "type": "int64",   "internalType": "int64" }
+    ],
+    "outputs": []
+  },
+  {
+    "type": "function",
+    "name": "stageForMultiSig",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      { "name": "signalId", "type": "bytes32", "internalType": "bytes32" },
+      { "name": "actionId", "type": "bytes32", "internalType": "bytes32" }
+    ],
+    "outputs": []
+  },
+  {
+    "type": "function",
+    "name": "timeout",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      { "name": "signalId", "type": "bytes32", "internalType": "bytes32" }
+    ],
+    "outputs": []
+  },
+  {
+    "type": "function",
+    "name": "markExecuted",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      { "name": "signalId", "type": "bytes32", "internalType": "bytes32" }
+    ],
+    "outputs": []
+  },
+  {
+    "type": "function",
+    "name": "markRejected",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      { "name": "signalId", "type": "bytes32", "internalType": "bytes32" },
+      { "name": "reason",   "type": "string",  "internalType": "string" }
+    ],
+    "outputs": []
+  },
+  {
+    "type": "function",
+    "name": "stateOf",
+    "stateMutability": "view",
+    "inputs": [
+      { "name": "signalId", "type": "bytes32", "internalType": "bytes32" }
+    ],
+    "outputs": [
+      { "name": "", "type": "uint8", "internalType": "enum IBridgeExecutor.FSMState" }
+    ]
+  }
+]

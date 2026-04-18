@@ -1,0 +1,58 @@
+[
+  {
+    "type": "event",
+    "name": "FailureRecorded",
+    "anonymous": false,
+    "inputs": [
+      { "name": "kind", "type": "uint8",  "indexed": true,  "internalType": "enum ICircuitBreaker.FailureKind" },
+      { "name": "at",   "type": "uint64", "indexed": false, "internalType": "uint64" }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "Tripped",
+    "anonymous": false,
+    "inputs": [
+      { "name": "at",                 "type": "uint64", "indexed": false, "internalType": "uint64" },
+      { "name": "failuresInWindow",   "type": "uint32", "indexed": false, "internalType": "uint32" }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "Reset",
+    "anonymous": false,
+    "inputs": [
+      { "name": "by", "type": "address", "indexed": true, "internalType": "address" }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "recordFailure",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      { "name": "kind", "type": "uint8", "internalType": "enum ICircuitBreaker.FailureKind" }
+    ],
+    "outputs": []
+  },
+  {
+    "type": "function",
+    "name": "isPaused",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [ { "name": "", "type": "bool", "internalType": "bool" } ]
+  },
+  {
+    "type": "function",
+    "name": "reset",
+    "stateMutability": "nonpayable",
+    "inputs": [],
+    "outputs": []
+  },
+  {
+    "type": "function",
+    "name": "failuresInWindow",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [ { "name": "", "type": "uint32", "internalType": "uint32" } ]
+  }
+]

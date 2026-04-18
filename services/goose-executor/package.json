@@ -1,0 +1,17 @@
+{
+  "name": "daes-goose-executor",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20.10" },
+  "scripts": {
+    "start": "node --experimental-strip-types src/main.ts",
+    "sim:buy-signal": "node --experimental-strip-types scripts/sim-buy-signal.ts"
+  },
+  "dependencies": {
+    "fastify": "^5.1.0",
+    "viem": "^2.21.44",
+    "yaml": "^2.6.1",
+    "undici": "^6.21.0"
+  }
+}

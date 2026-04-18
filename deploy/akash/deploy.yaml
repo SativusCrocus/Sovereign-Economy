@@ -1,0 +1,272 @@
+---
+# deploy/akash/deploy.yaml
+# Akash SDL v2.1 manifest for DAES. Mirrors docker-compose.yaml services
+# but replaces x86 defaults with GPU-capable provider attributes for the
+# agent-swarm-runtime. Anti-SPOF: count: 2 for gateway + indexer.
+#
+# Validate: akash validate deploy/akash/deploy.yaml
+# Deploy:   akash tx deployment create deploy/akash/deploy.yaml --from <key>
+
+version: "2.0"
+
+services:
+  graph-rag-indexer:
+    image: cr.weaviate.io/semitechnologies/weaviate:1.24.20
+    env:
+      - QUERY_DEFAULTS_LIMIT=25
+      - AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED=false
+      - AUTHENTICATION_APIKEY_ENABLED=true
+      - PERSISTENCE_DATA_PATH=/var/lib/weaviate
+      - CLUSTER_HOSTNAME=node1
+    expose:
+      - port: 8080
+        as: 8080
+        to:
+          - service: agent-swarm-runtime
+          - service: mcp-gateway
+    params:
+      storage:
+        weaviate-data:
+          mount: /var/lib/weaviate
+
+  agent-swarm-runtime:
+    image: ghcr.io/daes/agent-swarm-runtime:1.0.0
+    env:
+      - WEAVIATE_URL=http://graph-rag-indexer:8080
+      - MCP_GATEWAY_URL=https://mcp-gateway:8443
+      - DRAND_URL=https://api.drand.sh/public/latest
+    expose:
+      - port: 9100
+        as: 9100
+        to:
+          - service: mcp-gateway
+          - global: false
+    depends-on:
+      - graph-rag-indexer
+      - mcp-gateway
+
+  goose-executor:
+    image: ghcr.io/daes/goose-executor:1.0.0
+    env:
+      - MCP_GATEWAY_URL=https://mcp-gateway:8443
+    expose:
+      - port: 9200
+        as: 9200
+        to:
+          - service: mcp-gateway
+    depends-on:
+      - mcp-gateway
+      - blockchain-node
+
+  mcp-gateway:
+    image: ghcr.io/daes/mcp-gateway:1.0.0
+    expose:
+      - port: 8443
+        as: 443
+        proto: tcp
+        accept:
+          - daes.yourdomain.example
+        to:
+          - global: true
+    depends-on:
+      - graph-rag-indexer
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    expose:
+      - port: 9090
+        as: 9090
+        to:
+          - service: grafana
+    params:
+      storage:
+        prom-data:
+          mount: /prometheus
+
+  grafana:
+    image: grafana/grafana:11.3.1
+    env:
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+    expose:
+      - port: 3000
+        as: 3000
+        accept:
+          - grafana.yourdomain.example
+        to:
+          - global: true
+    params:
+      storage:
+        grafana-data:
+          mount: /var/lib/grafana
+
+  blockchain-node:
+    image: ethereum/client-go:v1.14.12
+    command: ["geth", "--dev", "--dev.period=1", "--http", "--http.addr=0.0.0.0", "--http.api=eth,net,web3,debug,txpool", "--datadir=/chain"]
+    expose:
+      - port: 8545
+        as: 8545
+        to:
+          - service: goose-executor
+          - service: mcp-gateway
+    params:
+      storage:
+        chain-data:
+          mount: /chain
+
+  ipfs:
+    image: ipfs/kubo:v0.30.0
+    expose:
+      - port: 5001
+        as: 5001
+        to:
+          - service: mcp-gateway
+      - port: 4001
+        as: 4001
+        proto: tcp
+        to:
+          - global: true
+    params:
+      storage:
+        ipfs-data:
+          mount: /data/ipfs
+
+profiles:
+  compute:
+    graph-rag-indexer:
+      resources:
+        cpu:    { units: 2.0 }
+        memory: { size: 4Gi }
+        storage:
+          - name: weaviate-data
+            size: 50Gi
+            attributes:
+              persistent: true
+              class: beta2
+
+    agent-swarm-runtime:
+      resources:
+        cpu:    { units: 8.0 }
+        memory: { size: 16Gi }
+        gpu:
+          units: 1
+          attributes:
+            vendor:
+              nvidia:
+                - model: a10
+                - model: a100
+        storage:
+          - size: 8Gi
+
+    goose-executor:
+      resources:
+        cpu:    { units: 2.0 }
+        memory: { size: 2Gi }
+        storage:
+          - size: 4Gi
+
+    mcp-gateway:
+      resources:
+        cpu:    { units: 1.0 }
+        memory: { size: 1Gi }
+        storage:
+          - size: 2Gi
+
+    prometheus:
+      resources:
+        cpu:    { units: 0.5 }
+        memory: { size: 1Gi }
+        storage:
+          - name: prom-data
+            size: 20Gi
+            attributes:
+              persistent: true
+              class: beta2
+
+    grafana:
+      resources:
+        cpu:    { units: 0.5 }
+        memory: { size: 1Gi }
+        storage:
+          - name: grafana-data
+            size: 5Gi
+            attributes:
+              persistent: true
+              class: beta2
+
+    blockchain-node:
+      resources:
+        cpu:    { units: 2.0 }
+        memory: { size: 4Gi }
+        storage:
+          - name: chain-data
+            size: 100Gi
+            attributes:
+              persistent: true
+              class: beta3
+
+    ipfs:
+      resources:
+        cpu:    { units: 0.5 }
+        memory: { size: 1Gi }
+        storage:
+          - name: ipfs-data
+            size: 50Gi
+            attributes:
+              persistent: true
+              class: beta2
+
+  placement:
+    datacenter-audited:
+      attributes:
+        host: akash
+      signedBy:
+        anyOf:
+          - "akash1365yvmc4s7awdyj3n2sav7xfx76adc6dnmlx63"
+          - "akash18qa2a2ltfyvkyj0ggj3hkvuj6twzyumuaru9s4"
+      pricing:
+        graph-rag-indexer:   { denom: uakt, amount: 2500 }
+        agent-swarm-runtime: { denom: uakt, amount: 15000 }
+        goose-executor:      { denom: uakt, amount: 1500 }
+        mcp-gateway:         { denom: uakt, amount: 1000 }
+        prometheus:          { denom: uakt, amount: 500 }
+        grafana:             { denom: uakt, amount: 500 }
+        blockchain-node:     { denom: uakt, amount: 2500 }
+        ipfs:                { denom: uakt, amount: 1000 }
+
+deployment:
+  graph-rag-indexer:
+    datacenter-audited:
+      profile: graph-rag-indexer
+      count: 2                   # anti-SPOF
+  agent-swarm-runtime:
+    datacenter-audited:
+      profile: agent-swarm-runtime
+      count: 1                   # GPU pinned; determinism requires single leader
+  goose-executor:
+    datacenter-audited:
+      profile: goose-executor
+      count: 1
+  mcp-gateway:
+    datacenter-audited:
+      profile: mcp-gateway
+      count: 2                   # anti-SPOF (public ingress)
+  prometheus:
+    datacenter-audited:
+      profile: prometheus
+      count: 1
+  grafana:
+    datacenter-audited:
+      profile: grafana
+      count: 1
+  blockchain-node:
+    datacenter-audited:
+      profile: blockchain-node
+      count: 1
+  ipfs:
+    datacenter-audited:
+      profile: ipfs
+      count: 1
+
+endpoints:
+  daes-public-tls:
+    kind: ip
