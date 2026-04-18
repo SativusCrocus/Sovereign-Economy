@@ -1,0 +1,58 @@
+{
+  "classes": [
+    {
+      "class": "DAES_MarketActor",
+      "description": "A participant in global markets (firm, sovereign, fund).",
+      "vectorizer": "none",
+      "properties": [
+        { "name": "actor_id",      "dataType": ["text"] },
+        { "name": "name",          "dataType": ["text"] },
+        { "name": "type",          "dataType": ["text"] },
+        { "name": "jurisdiction",  "dataType": ["text"] },
+        { "name": "capital_usd",   "dataType": ["number"] },
+        { "name": "reputation",    "dataType": ["number"] },
+        { "name": "source",        "dataType": ["text"] }
+      ]
+    },
+    {
+      "class": "DAES_Commodity",
+      "description": "A tradable good with a price and volatility series.",
+      "vectorizer": "none",
+      "properties": [
+        { "name": "commodity_id",    "dataType": ["text"] },
+        { "name": "hs_code",         "dataType": ["text"] },
+        { "name": "unit",            "dataType": ["text"] },
+        { "name": "spot_usd",        "dataType": ["number"] },
+        { "name": "volatility_30d",  "dataType": ["number"] },
+        { "name": "chainlink_feed",  "dataType": ["text"] },
+        { "name": "ts",              "dataType": ["date"] }
+      ]
+    },
+    {
+      "class": "DAES_TradeRoute",
+      "description": "A directed route between two ports/hubs.",
+      "vectorizer": "none",
+      "properties": [
+        { "name": "route_id",          "dataType": ["text"] },
+        { "name": "origin_port",       "dataType": ["text"] },
+        { "name": "dest_port",         "dataType": ["text"] },
+        { "name": "transit_days",      "dataType": ["number"] },
+        { "name": "congestion_score",  "dataType": ["number"] },
+        { "name": "last_ais_update",   "dataType": ["date"] }
+      ]
+    },
+    {
+      "class": "DAES_RegulatorEvent",
+      "description": "A regulatory action that may regulate actors or disrupt routes.",
+      "vectorizer": "none",
+      "properties": [
+        { "name": "event_id",        "dataType": ["text"] },
+        { "name": "issuer",          "dataType": ["text"] },
+        { "name": "jurisdiction",    "dataType": ["text"] },
+        { "name": "effective_ts",    "dataType": ["date"] },
+        { "name": "severity",        "dataType": ["number"] },
+        { "name": "text",            "dataType": ["text"] }
+      ]
+    }
+  ]
+}

@@ -92,8 +92,9 @@ Sovereign Economy/
 │   └── tls/generate-cert.sh
 ├── services/
 │   ├── agent-swarm-runtime/          # Layer 1 — Python 3.12, deterministic swarm
+│   ├── graph-rag-indexer/            # Layer 1 — WB + Comtrade + AIS + Chainlink ingesters
 │   ├── goose-executor/               # Layer 2 — Node 20, MCP client
-│   └── mcp-gateway/                  # Layer 2 — FastAPI, mTLS, JWT
+│   └── mcp-gateway/                  # Layer 2 — FastAPI, mTLS, JWT, 5 real tool handlers
 ├── config/
 │   ├── prometheus.yml
 │   ├── alerts.yml
@@ -108,7 +109,7 @@ The dev compose is deliberately permissive. For prod:
 1. Replace self-signed TLS with cert-manager / Let's Encrypt.
 2. Switch `WEAVIATE_API_KEY` and `MCP_JWT_SECRET` to a secrets manager (Vault, Doppler, Akash SealedSecrets).
 3. Rotate the swarm seed from Chainlink VRF on-chain (not env-var `SEED`).
-4. Replace the stubbed `/tools/*` handlers in `services/mcp-gateway/app/routes.py` with real upstream calls (Tenderly fork, LayerZero endpoint, IPFS cluster).
+4. Handlers in [services/mcp-gateway/app/handlers/](services/mcp-gateway/app/handlers/) are real but dev-friendly (HMAC signatures, deterministic GUIDs). Swap to HSM-backed secp256k1 signing, a real Pimlico bundler, and Tenderly URL before shipping.
 5. Add an audited OpenZeppelin implementation behind each interface in `contracts/interfaces/*.sol` — the current repo is interfaces-only by spec.
 6. Configure the Akash placement `signedBy.anyOf` list to providers your org has actually audited.
 

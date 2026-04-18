@@ -2,12 +2,13 @@
 import { request } from "undici";
 import type { DaesSpec } from "./spec.ts";
 
-type SignalKind = "BUY" | "SELL" | "HOLD" | "ESCALATE_TO_GUARDIAN";
+export type SignalKind = "BUY" | "SELL" | "HOLD" | "ESCALATE_TO_GUARDIAN";
+export interface SwarmSignal { kind: SignalKind; payload: unknown }
 
 const GATEWAY = process.env.MCP_GATEWAY_URL ?? "https://mcp-gateway:8443";
 const JWT     = process.env.MCP_JWT ?? "";
 
-export async function dispatchSignal(spec: DaesSpec, signal: { kind: SignalKind; payload: unknown }) {
+export async function dispatchSignal(spec: DaesSpec, signal: SwarmSignal) {
   switch (signal.kind) {
     case "HOLD":
       return { accepted: true, reason: "HOLD — no action" };

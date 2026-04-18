@@ -64,6 +64,37 @@ services:
     networks: [daes-net]
 
   # -------------------------------------------------------------------------
+  # Layer 1 — GraphRAG ingester sidecar (World Bank, Comtrade, AIS, Chainlink)
+  # -------------------------------------------------------------------------
+  rag-ingester:
+    build:
+      context: ../services/graph-rag-indexer
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      WEAVIATE_URL: http://graph-rag-indexer:8080
+      WEAVIATE_API_KEY: ${WEAVIATE_API_KEY:?WEAVIATE_API_KEY required}
+      BASE_RPC_URL: ${BASE_RPC_URL:?}
+      AISSTREAM_API_KEY: ${AISSTREAM_API_KEY:-}
+      INGEST_PERIOD_S: "900"
+    volumes:
+      - ../spec:/spec:ro
+    depends_on:
+      graph-rag-indexer: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:9300/healthz', timeout=2).status==200 else 1)"]
+      interval: 20s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    deploy:
+      resources:
+        limits: { cpus: "1.0", memory: 1G }
+        reservations: { cpus: "0.25", memory: 256M }
+    networks: [daes-net]
+
+  # -------------------------------------------------------------------------
   # Layer 1 — 1000-agent swarm runtime (Python 3.12)
   # -------------------------------------------------------------------------
   agent-swarm-runtime:

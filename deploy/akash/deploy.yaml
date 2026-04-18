@@ -29,6 +29,19 @@ services:
         weaviate-data:
           mount: /var/lib/weaviate
 
+  rag-ingester:
+    image: ghcr.io/daes/rag-ingester:1.0.0
+    env:
+      - WEAVIATE_URL=http://graph-rag-indexer:8080
+      - INGEST_PERIOD_S=900
+    expose:
+      - port: 9300
+        as: 9300
+        to:
+          - service: mcp-gateway
+    depends-on:
+      - graph-rag-indexer
+
   agent-swarm-runtime:
     image: ghcr.io/daes/agent-swarm-runtime:1.0.0
     env:
@@ -143,6 +156,13 @@ profiles:
               persistent: true
               class: beta2
 
+    rag-ingester:
+      resources:
+        cpu:    { units: 1.0 }
+        memory: { size: 1Gi }
+        storage:
+          - size: 2Gi
+
     agent-swarm-runtime:
       resources:
         cpu:    { units: 8.0 }
@@ -225,6 +245,7 @@ profiles:
           - "akash18qa2a2ltfyvkyj0ggj3hkvuj6twzyumuaru9s4"
       pricing:
         graph-rag-indexer:   { denom: uakt, amount: 2500 }
+        rag-ingester:        { denom: uakt, amount: 1000 }
         agent-swarm-runtime: { denom: uakt, amount: 15000 }
         goose-executor:      { denom: uakt, amount: 1500 }
         mcp-gateway:         { denom: uakt, amount: 1000 }
@@ -238,6 +259,10 @@ deployment:
     datacenter-audited:
       profile: graph-rag-indexer
       count: 2                   # anti-SPOF
+  rag-ingester:
+    datacenter-audited:
+      profile: rag-ingester
+      count: 1
   agent-swarm-runtime:
     datacenter-audited:
       profile: agent-swarm-runtime
