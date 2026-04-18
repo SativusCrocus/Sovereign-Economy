@@ -126,6 +126,24 @@ services:
         chain-data:
           mount: /chain
 
+  frontend:
+    image: ghcr.io/daes/frontend:1.0.0
+    env:
+      - MCP_GATEWAY_URL=https://mcp-gateway:8443
+      - AGENT_SWARM_URL=http://agent-swarm-runtime:9100
+      - GOOSE_URL=http://goose-executor:9200
+      - RAG_INGESTER_URL=http://rag-ingester:9300
+    expose:
+      - port: 3001
+        as: 443
+        proto: tcp
+        accept:
+          - console.yourdomain.example
+        to:
+          - global: true
+    depends-on:
+      - mcp-gateway
+
   ipfs:
     image: ipfs/kubo:v0.30.0
     expose:
@@ -224,6 +242,13 @@ profiles:
               persistent: true
               class: beta3
 
+    frontend:
+      resources:
+        cpu:    { units: 1.0 }
+        memory: { size: 1Gi }
+        storage:
+          - size: 2Gi
+
     ipfs:
       resources:
         cpu:    { units: 0.5 }
@@ -253,6 +278,7 @@ profiles:
         grafana:             { denom: uakt, amount: 500 }
         blockchain-node:     { denom: uakt, amount: 2500 }
         ipfs:                { denom: uakt, amount: 1000 }
+        frontend:            { denom: uakt, amount: 1000 }
 
 deployment:
   graph-rag-indexer:
@@ -291,6 +317,10 @@ deployment:
     datacenter-audited:
       profile: ipfs
       count: 1
+  frontend:
+    datacenter-audited:
+      profile: frontend
+      count: 2                   # anti-SPOF (public UI)
 
 endpoints:
   daes-public-tls:

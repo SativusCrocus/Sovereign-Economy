@@ -65,6 +65,8 @@ docker compose exec agent-swarm-runtime pytest tests/test_determinism.py -v
 docker compose exec goose-executor npm run sim:buy-signal
 # Grafana → http://localhost:3000 (admin / $GRAFANA_ADMIN_PASSWORD)
 #   dashboard: "DAES Overview" — swarm signal rate + state-hash probe
+# Console  → http://localhost:3001
+#   pages: / (health + grafana), /bridge (FSM), /accounts (EIP-4337), /audit (IPFS)
 ```
 
 ### Hour 6-8 · Akash (optional, prod)
@@ -99,6 +101,10 @@ Sovereign Economy/
 │   ├── graph-rag-indexer/            # Layer 1 — WB + Comtrade + AIS + Chainlink ingesters
 │   ├── goose-executor/               # Layer 2 — Node 20, MCP client
 │   └── mcp-gateway/                  # Layer 2 — FastAPI, mTLS, JWT, 5 real tool handlers
+├── frontend/                         # Layer 4 — Next.js 15 + wagmi v2 operator console
+│   ├── app/{page,bridge,accounts,audit}.tsx
+│   ├── lib/{config,contracts,mcp}.ts
+│   └── Dockerfile
 ├── config/
 │   ├── prometheus.yml
 │   ├── alerts.yml

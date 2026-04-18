@@ -25,10 +25,11 @@ jobs:
       fail-fast: false
       matrix:
         service:
-          - { name: agent-swarm-runtime, context: services/agent-swarm-runtime }
-          - { name: goose-executor,      context: services/goose-executor }
-          - { name: mcp-gateway,         context: services/mcp-gateway }
-          - { name: rag-ingester,        context: services/graph-rag-indexer }
+          - { name: agent-swarm-runtime, context: services/agent-swarm-runtime, dockerfile: Dockerfile }
+          - { name: goose-executor,      context: services/goose-executor,       dockerfile: Dockerfile }
+          - { name: mcp-gateway,         context: services/mcp-gateway,          dockerfile: Dockerfile }
+          - { name: rag-ingester,        context: services/graph-rag-indexer,    dockerfile: Dockerfile }
+          - { name: frontend,            context: .,                              dockerfile: frontend/Dockerfile }
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -48,6 +49,7 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.service.context }}
+          file: ${{ matrix.service.context }}/${{ matrix.service.dockerfile }}
           push: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/daes-${{ matrix.service.name }}:${{ steps.tag.outputs.tag }}
