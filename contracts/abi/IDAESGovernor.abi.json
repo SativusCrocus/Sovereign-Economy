@@ -1,109 +1,240 @@
 [
   {
-    "type": "event",
-    "name": "ActionStaged",
     "anonymous": false,
     "inputs": [
-      { "name": "actionId", "type": "bytes32", "indexed": true, "internalType": "bytes32" },
-      { "name": "target",   "type": "address", "indexed": true, "internalType": "address" },
-      { "name": "data",     "type": "bytes",   "indexed": false, "internalType": "bytes" },
-      { "name": "stagedAt", "type": "uint64",  "indexed": false, "internalType": "uint64" }
-    ]
-  },
-  {
-    "type": "event",
-    "name": "ActionSigned",
-    "anonymous": false,
-    "inputs": [
-      { "name": "actionId", "type": "bytes32", "indexed": true, "internalType": "bytes32" },
-      { "name": "role",     "type": "uint8",   "indexed": true, "internalType": "enum IDAESGovernor.SignerRole" },
-      { "name": "signer",   "type": "address", "indexed": true, "internalType": "address" }
-    ]
-  },
-  {
-    "type": "event",
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "actionId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes",
+        "name": "returnData",
+        "type": "bytes"
+      }
+    ],
     "name": "ActionExecuted",
-    "anonymous": false,
-    "inputs": [
-      { "name": "actionId",   "type": "bytes32", "indexed": true, "internalType": "bytes32" },
-      { "name": "returnData", "type": "bytes",   "indexed": false, "internalType": "bytes" }
-    ]
+    "type": "event"
   },
   {
-    "type": "event",
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "actionId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "reason",
+        "type": "string"
+      }
+    ],
     "name": "ActionRejected",
+    "type": "event"
+  },
+  {
     "anonymous": false,
     "inputs": [
-      { "name": "actionId", "type": "bytes32", "indexed": true, "internalType": "bytes32" },
-      { "name": "reason",   "type": "string",  "indexed": false, "internalType": "string" }
-    ]
-  },
-  {
-    "type": "function",
-    "name": "stageAction",
-    "stateMutability": "nonpayable",
-    "inputs": [
-      { "name": "actionId", "type": "bytes32", "internalType": "bytes32" },
-      { "name": "target",   "type": "address", "internalType": "address" },
-      { "name": "value",    "type": "uint256", "internalType": "uint256" },
-      { "name": "data",     "type": "bytes",   "internalType": "bytes" }
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "actionId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "internalType": "enum IDAESGovernor.SignerRole",
+        "name": "role",
+        "type": "uint8"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "signer",
+        "type": "address"
+      }
     ],
-    "outputs": []
+    "name": "ActionSigned",
+    "type": "event"
   },
   {
-    "type": "function",
-    "name": "signAction",
-    "stateMutability": "nonpayable",
+    "anonymous": false,
     "inputs": [
-      { "name": "actionId", "type": "bytes32", "internalType": "bytes32" },
-      { "name": "role",     "type": "uint8",   "internalType": "enum IDAESGovernor.SignerRole" },
-      { "name": "sig",      "type": "bytes",   "internalType": "bytes" }
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "actionId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "target",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes",
+        "name": "data",
+        "type": "bytes"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint64",
+        "name": "stagedAt",
+        "type": "uint64"
+      }
     ],
-    "outputs": []
+    "name": "ActionStaged",
+    "type": "event"
   },
   {
-    "type": "function",
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "actionId",
+        "type": "bytes32"
+      }
+    ],
     "name": "executeAction",
-    "stateMutability": "nonpayable",
-    "inputs": [
-      { "name": "actionId", "type": "bytes32", "internalType": "bytes32" }
-    ],
-    "outputs": [
-      { "name": "", "type": "bytes", "internalType": "bytes" }
-    ]
-  },
-  {
-    "type": "function",
-    "name": "rejectAction",
-    "stateMutability": "nonpayable",
-    "inputs": [
-      { "name": "actionId", "type": "bytes32", "internalType": "bytes32" },
-      { "name": "reason",   "type": "string",  "internalType": "string" }
-    ],
-    "outputs": []
-  },
-  {
-    "type": "function",
-    "name": "getAction",
-    "stateMutability": "view",
-    "inputs": [
-      { "name": "actionId", "type": "bytes32", "internalType": "bytes32" }
-    ],
     "outputs": [
       {
+        "internalType": "bytes",
         "name": "",
-        "type": "tuple",
-        "internalType": "struct IDAESGovernor.StagedAction",
-        "components": [
-          { "name": "target",          "type": "address", "internalType": "address" },
-          { "name": "value",           "type": "uint256", "internalType": "uint256" },
-          { "name": "data",            "type": "bytes",   "internalType": "bytes" },
-          { "name": "stagedAt",        "type": "uint64",  "internalType": "uint64" },
-          { "name": "signatureBitmap", "type": "uint8",   "internalType": "uint8" },
-          { "name": "executed",        "type": "bool",    "internalType": "bool" },
-          { "name": "rejected",        "type": "bool",    "internalType": "bool" }
-        ]
+        "type": "bytes"
       }
-    ]
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "actionId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getAction",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "target",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "value",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bytes",
+            "name": "data",
+            "type": "bytes"
+          },
+          {
+            "internalType": "uint64",
+            "name": "stagedAt",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint8",
+            "name": "signatureBitmap",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bool",
+            "name": "executed",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "rejected",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct IDAESGovernor.StagedAction",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "actionId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "string",
+        "name": "reason",
+        "type": "string"
+      }
+    ],
+    "name": "rejectAction",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "actionId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "enum IDAESGovernor.SignerRole",
+        "name": "role",
+        "type": "uint8"
+      },
+      {
+        "internalType": "bytes",
+        "name": "sig",
+        "type": "bytes"
+      }
+    ],
+    "name": "signAction",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "actionId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "target",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "value",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes",
+        "name": "data",
+        "type": "bytes"
+      }
+    ],
+    "name": "stageAction",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   }
 ]

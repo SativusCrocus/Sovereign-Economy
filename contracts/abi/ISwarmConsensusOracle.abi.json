@@ -1,57 +1,125 @@
 [
   {
-    "type": "event",
-    "name": "SwarmSignalPosted",
     "anonymous": false,
     "inputs": [
-      { "name": "signalHash",   "type": "bytes32", "indexed": true,  "internalType": "bytes32" },
-      { "name": "kind",         "type": "uint8",   "indexed": false, "internalType": "uint8" },
-      { "name": "quorumBps",    "type": "uint16",  "indexed": false, "internalType": "uint16" },
-      { "name": "sigmaBandE6",  "type": "int64",   "indexed": false, "internalType": "int64" }
-    ]
-  },
-  {
-    "type": "function",
-    "name": "postSignal",
-    "stateMutability": "nonpayable",
-    "inputs": [
-      { "name": "signalHash",  "type": "bytes32", "internalType": "bytes32" },
-      { "name": "kind",        "type": "uint8",   "internalType": "uint8" },
-      { "name": "quorumBps",   "type": "uint16",  "internalType": "uint16" },
-      { "name": "sigmaBandE6", "type": "int64",   "internalType": "int64" }
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "signalHash",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint8",
+        "name": "kind",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint16",
+        "name": "quorumBps",
+        "type": "uint16"
+      },
+      {
+        "indexed": false,
+        "internalType": "int64",
+        "name": "sigmaBandE6",
+        "type": "int64"
+      }
     ],
-    "outputs": []
+    "name": "SwarmSignalPosted",
+    "type": "event"
   },
   {
-    "type": "function",
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "signalHash",
+        "type": "bytes32"
+      }
+    ],
     "name": "getSignal",
-    "stateMutability": "view",
-    "inputs": [
-      { "name": "signalHash", "type": "bytes32", "internalType": "bytes32" }
-    ],
     "outputs": [
       {
-        "name": "",
-        "type": "tuple",
-        "internalType": "struct ISwarmConsensusOracle.Signal",
         "components": [
-          { "name": "signalHash",          "type": "bytes32", "internalType": "bytes32" },
-          { "name": "kind",                "type": "uint8",   "internalType": "uint8" },
-          { "name": "quorumBps",           "type": "uint16",  "internalType": "uint16" },
-          { "name": "sigmaBandE6",         "type": "int64",   "internalType": "int64" },
-          { "name": "postedAt",            "type": "uint64",  "internalType": "uint64" },
-          { "name": "posterAgentRuntime",  "type": "address", "internalType": "address" }
-        ]
+          {
+            "internalType": "bytes32",
+            "name": "signalHash",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint8",
+            "name": "kind",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint16",
+            "name": "quorumBps",
+            "type": "uint16"
+          },
+          {
+            "internalType": "int64",
+            "name": "sigmaBandE6",
+            "type": "int64"
+          },
+          {
+            "internalType": "uint64",
+            "name": "postedAt",
+            "type": "uint64"
+          },
+          {
+            "internalType": "address",
+            "name": "posterAgentRuntime",
+            "type": "address"
+          }
+        ],
+        "internalType": "struct ISwarmConsensusOracle.Signal",
+        "name": "",
+        "type": "tuple"
       }
-    ]
+    ],
+    "stateMutability": "view",
+    "type": "function"
   },
   {
-    "type": "function",
-    "name": "latestSignalHash",
-    "stateMutability": "view",
     "inputs": [],
+    "name": "latestSignalHash",
     "outputs": [
-      { "name": "", "type": "bytes32", "internalType": "bytes32" }
-    ]
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "signalHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint8",
+        "name": "kind",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint16",
+        "name": "quorumBps",
+        "type": "uint16"
+      },
+      {
+        "internalType": "int64",
+        "name": "sigmaBandE6",
+        "type": "int64"
+      }
+    ],
+    "name": "postSignal",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   }
 ]

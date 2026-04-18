@@ -10,7 +10,7 @@ Evaluation target: **a senior engineer can stand this up in <8 hours.**
 |---|----------|------|
 | 1 | Mermaid architecture diagram | [docs/architecture.md](docs/architecture.md) |
 | 2 | Component spec YAML (single source of truth) | [spec/components.yaml](spec/components.yaml) |
-| 3 | Solidity ABI stubs (7 interfaces + JSON ABIs) | [contracts/interfaces/](contracts/interfaces/) • [contracts/abi/](contracts/abi/) |
+| 3 | Solidity interfaces + reference impls + ABI JSONs | [contracts/interfaces/](contracts/interfaces/) • [contracts/src/](contracts/src/) • [contracts/abi/](contracts/abi/) |
 | 4 | `docker-compose.yaml` | [deploy/docker-compose.yaml](deploy/docker-compose.yaml) |
 | 5 | Akash SDL manifest | [deploy/akash/deploy.yaml](deploy/akash/deploy.yaml) |
 
@@ -53,8 +53,10 @@ Expected response: `{"status":"ok","tools":["wallet_sign_transaction","supply_ch
 ```bash
 cd contracts
 npm install
-npx hardhat compile                            # regenerates contracts/abi/*.json
-npx hardhat run --network local scripts/deploy-local.ts   # optional, if you add a deploy script
+npx hardhat compile                            # compiles 28 artifacts (7 interfaces + 8 impls + OZ)
+npx hardhat test                               # 14 tests pass
+npx ts-node scripts/extract-abi.ts             # refresh contracts/abi/*.json
+npx hardhat run --network local scripts/deploy-local.ts
 ```
 
 ### Hour 5-6 · Smoke tests
@@ -66,11 +68,11 @@ docker compose exec goose-executor npm run sim:buy-signal
 ```
 
 ### Hour 6-8 · Akash (optional, prod)
+Full walkthrough in [docs/deploy-akash.md](docs/deploy-akash.md). Short version:
 ```bash
+git tag v1.0.0 && git push --tags   # triggers GHCR image publish
 akash validate deploy/akash/deploy.yaml
 akash tx deployment create deploy/akash/deploy.yaml --from <your-key>
-# Review bids, accept providers matching the GPU-tier filter (a10 or a100):
-akash query market bid list --owner <you> --state open
 ```
 
 ## Repository layout
@@ -81,10 +83,12 @@ Sovereign Economy/
 ├── spec/components.yaml              # Artifact 2 (source of truth)
 ├── contracts/
 │   ├── interfaces/*.sol              # Artifact 3 — 7 Solidity interfaces
-│   ├── abi/*.abi.json                # Artifact 3 — pre-computed ABI JSONs
+│   ├── src/*.sol                     # Reference implementations (8 contracts, 14 Hardhat tests)
+│   ├── test/*.test.ts                # Hardhat test suite
+│   ├── abi/*.abi.json                # Pre-computed ABI JSONs (solc-generated)
 │   ├── hardhat.config.ts
 │   ├── package.json
-│   └── scripts/extract-abi.ts
+│   └── scripts/{extract-abi,deploy-local}.ts
 ├── deploy/
 │   ├── docker-compose.yaml           # Artifact 4
 │   ├── akash/deploy.yaml             # Artifact 5
@@ -107,10 +111,10 @@ Sovereign Economy/
 The dev compose is deliberately permissive. For prod:
 
 1. Replace self-signed TLS with cert-manager / Let's Encrypt.
-2. Switch `WEAVIATE_API_KEY` and `MCP_JWT_SECRET` to a secrets manager (Vault, Doppler, Akash SealedSecrets).
+2. Switch `WEAVIATE_API_KEY`, `MCP_JWT_SECRET`, and `AGENT_KEY_*` to a secrets manager (Vault, Doppler, Akash SealedSecrets) or better, an HSM.
 3. Rotate the swarm seed from Chainlink VRF on-chain (not env-var `SEED`).
-4. Handlers in [services/mcp-gateway/app/handlers/](services/mcp-gateway/app/handlers/) are real but dev-friendly (HMAC signatures, deterministic GUIDs). Swap to HSM-backed secp256k1 signing, a real Pimlico bundler, and Tenderly URL before shipping.
-5. Add an audited OpenZeppelin implementation behind each interface in `contracts/interfaces/*.sol` — the current repo is interfaces-only by spec.
+4. [services/mcp-gateway/app/handlers/wallet_sign.py](services/mcp-gateway/app/handlers/wallet_sign.py) uses real secp256k1 via eth-account; provision distinct `AGENT_KEY_<ARCHETYPE>` keys via HSM in prod. Configure `PIMLICO_API_KEY` for bundler submission; `TENDERLY_URL` for simulation.
+5. Run the full audit checklist in [docs/audit-notes.md](docs/audit-notes.md) — at minimum, fix the **H-1/H-2/H-3** findings before mainnet, and commission a third-party audit (Trail of Bits / OpenZeppelin / Spearbit).
 6. Configure the Akash placement `signedBy.anyOf` list to providers your org has actually audited.
 
 ## Safety architecture at a glance

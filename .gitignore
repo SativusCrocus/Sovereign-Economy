@@ -11,6 +11,7 @@ __pycache__/
 contracts/cache/
 contracts/artifacts/
 contracts/typechain-types/
+contracts/dist/
 # Editor
 .vscode/
 .idea/

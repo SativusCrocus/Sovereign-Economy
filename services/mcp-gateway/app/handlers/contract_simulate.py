@@ -36,12 +36,32 @@ async def handle_contract_simulate(payload: dict[str, Any]) -> dict[str, Any]:
 
     try:
         if TENDERLY_URL:
-            trace = await _rpc(url, "tenderly_simulateTransaction", [call, block_tag])
+            # Tenderly simulation API format:
+            # POST {account}/project/{project}/simulate with network_id, from, to, input, value.
+            tenderly_payload = {
+                "network_id": str(payload.get("chain_id", 8453)),
+                "from": call["from"],
+                "to": call["to"],
+                "input": call["data"],
+                "value": call.get("value", "0x0"),
+                "block_number": None if block_tag == "latest" else int(block_tag, 16) if block_tag.startswith("0x") else int(block_tag),
+                "save": False,
+                "save_if_fails": False,
+            }
+            async with httpx.AsyncClient(timeout=TIMEOUT) as http:
+                r = await http.post(
+                    f"{TENDERLY_URL}/simulate",
+                    json=tenderly_payload,
+                    headers={"X-Access-Key": os.environ.get("TENDERLY_ACCESS_KEY", "")},
+                )
+                r.raise_for_status()
+                sim = r.json()
+            tx = sim.get("transaction") or {}
             return {
-                "success": bool(trace.get("status", True)),
-                "gas_used": int(trace.get("gasUsed", "0x0"), 16) if isinstance(trace.get("gasUsed"), str) else int(trace.get("gasUsed", 0)),
-                "return_data": trace.get("output", "0x"),
-                "trace": trace.get("trace", []),
+                "success": bool(tx.get("status", True)),
+                "gas_used": int(tx.get("gas_used", 0)),
+                "return_data": "0x" + (tx.get("transaction_info", {}).get("call_trace", {}).get("output", "").lstrip("0x") or ""),
+                "trace": tx.get("transaction_info", {}).get("call_trace", []),
                 "source": source,
             }
         ret  = await _rpc(url, "eth_call", [call, block_tag])
