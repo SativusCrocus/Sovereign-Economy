@@ -2,6 +2,7 @@ import type { Config } from "tailwindcss";
 
 const config: Config = {
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
+  darkMode: "class",
   theme: {
     extend: {
       fontFamily: {
@@ -101,14 +102,24 @@ const config: Config = {
           "0%":   { transform: "rotate(0deg)" },
           "100%": { transform: "rotate(360deg)" },
         },
+        marquee: {
+          "0%":   { transform: "translateX(0)" },
+          "100%": { transform: "translateX(-50%)" },
+        },
+        heatpulse: {
+          "0%,100%": { opacity: "0.85" },
+          "50%":     { opacity: "1" },
+        },
       },
       animation: {
-        aurora:   "aurora 28s ease-in-out infinite",
-        float:    "float 7s ease-in-out infinite",
-        breathe:  "breathe 4.5s ease-in-out infinite",
-        shimmer:  "shimmer 3s linear infinite",
-        "pulse2": "pulse2 2.5s ease-in-out infinite",
+        aurora:    "aurora 28s ease-in-out infinite",
+        float:     "float 7s ease-in-out infinite",
+        breathe:   "breathe 4.5s ease-in-out infinite",
+        shimmer:   "shimmer 3s linear infinite",
+        "pulse2":  "pulse2 2.5s ease-in-out infinite",
         "spin-slow": "spin-slow 40s linear infinite",
+        marquee:   "marquee 42s linear infinite",
+        heatpulse: "heatpulse 3s ease-in-out infinite",
       },
       transitionTimingFunction: {
         "silk": "cubic-bezier(0.22, 1, 0.36, 1)",

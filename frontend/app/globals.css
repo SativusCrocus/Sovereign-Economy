@@ -2,11 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: light; }
+:root {
+  color-scheme: light;
+  --bg:            #fafbfd;
+  --bg2:           #f3f6fb;
+  --panel-rgb:     255 255 255;     /* for alpha variants */
+  --border-color:  #e4e9f0;
+  --border2-color: #cbd5e1;
+  --text-color:    #0f172a;
+  --muted-color:   #64748b;
+  --subtle-color:  #94a3b8;
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: #cbd5e1;
+  --scrollbar-thumb-hover: #94a3b8;
+}
+
+html.dark {
+  color-scheme: dark;
+  --bg:            #0a0e1b;
+  --bg2:           #121829;
+  --panel-rgb:     26 33 51;        /* #1a2133 */
+  --border-color:  #2a3351;
+  --border2-color: #3b466a;
+  --text-color:    #eef2fb;
+  --muted-color:   #9fb1cf;
+  --subtle-color:  #778aa8;
+  --scrollbar-thumb: #2a3351;
+  --scrollbar-thumb-hover: #3b466a;
+}
 
 html, body {
-  background: theme('colors.bg');
-  color:      theme('colors.text');
+  background: var(--bg);
+  color:      var(--text-color);
   font-feature-settings: "ss01", "cv11", "liga", "calt";
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -169,9 +196,9 @@ html, body {
 
 /* ─── Scrollbars ──────────────────────────────────────────────────── */
 ::-webkit-scrollbar             { width: 10px; height: 10px; }
-::-webkit-scrollbar-track       { background: transparent; }
-::-webkit-scrollbar-thumb       { background: #cbd5e1; border-radius: 9999px; border: 2px solid #fafbfd; }
-::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+::-webkit-scrollbar-track       { background: var(--scrollbar-track); }
+::-webkit-scrollbar-thumb       { background: var(--scrollbar-thumb); border-radius: 9999px; border: 2px solid var(--bg); }
+::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
 
 /* ─── Shimmer CTAs ────────────────────────────────────────────────── */
 .sheen { position: relative; overflow: hidden; }
@@ -208,3 +235,85 @@ html, body {
   [class*="animate-"] { animation: none !important; }
   .tilt-3d:hover { transform: none !important; }
 }
+
+/* ─── Dark theme overrides ────────────────────────────────────────── */
+/*
+   We keep the Tailwind palette literal (fast to compile, zero runtime
+   cost) and only remap the surface/ink tokens in dark mode so the bulk
+   of the UI "just works". The few accent colours stay identical — they
+   still pop against the darker surfaces.
+*/
+
+html.dark .bg-bg       { background-color: var(--bg); }
+html.dark .bg-bg2      { background-color: var(--bg2); }
+html.dark .bg-panel    { background-color: rgb(var(--panel-rgb)); }
+html.dark .bg-panel2   { background-color: rgb(var(--panel-rgb) / 0.65); }
+html.dark .bg-panel\/60 { background-color: rgb(var(--panel-rgb) / 0.60); }
+html.dark .bg-panel\/70 { background-color: rgb(var(--panel-rgb) / 0.70); }
+
+html.dark .text-text   { color: var(--text-color); }
+html.dark .text-muted  { color: var(--muted-color); }
+html.dark .text-subtle { color: var(--subtle-color); }
+
+html.dark .border-border  { border-color: var(--border-color); }
+html.dark .border-border2 { border-color: var(--border2-color); }
+
+/* bg-white variants — flip to panel surface with matching alpha */
+html.dark .bg-white       { background-color: rgb(var(--panel-rgb)); }
+html.dark .bg-white\/20   { background-color: rgb(var(--panel-rgb) / 0.20); }
+html.dark .bg-white\/40   { background-color: rgb(var(--panel-rgb) / 0.40); }
+html.dark .bg-white\/60   { background-color: rgb(var(--panel-rgb) / 0.60); }
+html.dark .bg-white\/70   { background-color: rgb(var(--panel-rgb) / 0.70); }
+html.dark .bg-white\/72   { background-color: rgb(var(--panel-rgb) / 0.72); }
+html.dark .bg-white\/75   { background-color: rgb(var(--panel-rgb) / 0.75); }
+html.dark .bg-white\/80   { background-color: rgb(var(--panel-rgb) / 0.80); }
+html.dark .bg-white\/92   { background-color: rgb(var(--panel-rgb) / 0.92); }
+html.dark .bg-white\/95   { background-color: rgb(var(--panel-rgb) / 0.95); }
+html.dark .hover\:bg-white:hover { background-color: rgb(var(--panel-rgb)); }
+
+/* from-white gradient stops */
+html.dark .from-white { --tw-gradient-from: rgb(var(--panel-rgb)) var(--tw-gradient-from-position); }
+
+/* Glass & glass-colored */
+html.dark .glass {
+  background-color: rgb(var(--panel-rgb) / 0.72);
+  border-color:     rgba(42, 51, 81, 0.8);
+  box-shadow:       0 1px 2px rgba(0,0,0,0.20), 0 10px 28px -12px rgba(0,0,0,0.55);
+}
+html.dark .glass::before {
+  background: linear-gradient(
+    180deg,
+    rgba(255,255,255,0.06) 0%,
+    rgba(255,255,255,0.03) 15%,
+    transparent 40%
+  );
+}
+html.dark .glass-colored {
+  background: linear-gradient(180deg, rgb(var(--panel-rgb) / 0.92) 0%, rgb(22 28 46 / 0.90) 100%);
+  border-color: rgba(60, 72, 110, 0.6);
+}
+html.dark .glass-colored::after {
+  background:
+    radial-gradient(40rem 20rem at 10% -20%, rgba(56,189,248,0.18), transparent 60%),
+    radial-gradient(30rem 20rem at 100% 0%, rgba(124,58,237,0.22), transparent 60%);
+}
+
+/* Aurora gradients — dim pastels for dark mode */
+html.dark .aurora-2 {
+  background:
+    radial-gradient(40rem 24rem at 15% -5%, rgba(14,165,233,0.25), transparent 60%),
+    radial-gradient(38rem 24rem at 85%  0%, rgba(124,58,237,0.22), transparent 60%),
+    radial-gradient(34rem 24rem at 50%  5%, rgba(219,39,119,0.18), transparent 60%);
+}
+html.dark .aurora-soft {
+  background:
+    radial-gradient(42rem 24rem at 15% 10%, rgba(14,165,233,0.18), transparent 60%),
+    radial-gradient(38rem 24rem at 85% 0%,  rgba(124,58,237,0.16), transparent 60%);
+}
+html.dark .bg-dotgrid {
+  background-image: radial-gradient(rgba(148,163,184,0.20) 1px, transparent 1px);
+}
+
+/* Selection */
+html.dark ::selection { background: rgba(56,189,248,0.28); }
+

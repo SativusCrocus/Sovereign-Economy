@@ -5,6 +5,9 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import { Providers } from "./providers";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
+import { CommandPaletteHost } from "@/components/CommandPalette";
+import { PwaBoot } from "@/components/PwaBoot";
+import { Notifier } from "@/components/Notifier";
 
 const sans = Inter({
   subsets: ["latin"],
@@ -44,16 +47,33 @@ export const metadata: Metadata = {
     description: "2000-agent swarm → MCP tool execution → 3-of-5 multi-sig bridge.",
   },
   robots: { index: true, follow: true },
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "DAES",
+    statusBarStyle: "default",
+  },
 };
 
 export const viewport: Viewport = {
   themeColor: "#fafbfd",
-  colorScheme: "light",
+  colorScheme: "light dark",
 };
+
+const themeBoot = `
+try {
+  var t = localStorage.getItem("daes.theme");
+  if (t === "dark") document.documentElement.classList.add("dark");
+} catch (_) {}
+`.trim();
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${sans.variable} ${mono.variable}`}>
+      <head>
+        {/* Apply the persisted theme before hydration to avoid a flash. */}
+        <script dangerouslySetInnerHTML={{ __html: themeBoot }} />
+      </head>
       <body className="relative min-h-screen bg-bg font-sans text-text antialiased selection:bg-accent/20 selection:text-text">
         {/* Ambient layers */}
         <div className="pointer-events-none fixed inset-x-0 top-0 -z-20 h-[90vh] aurora-2" aria-hidden />
@@ -61,9 +81,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div className="pointer-events-none fixed inset-0 -z-10 bg-noise" aria-hidden />
 
         <Providers>
-          <Nav />
-          <main className="relative mx-auto w-full max-w-6xl px-4 py-8 md:py-12">{children}</main>
-          <Footer />
+          <CommandPaletteHost>
+            <Nav />
+            <main className="relative mx-auto w-full max-w-6xl px-4 py-8 md:py-12">{children}</main>
+            <Footer />
+          </CommandPaletteHost>
+          <PwaBoot />
+          <Notifier />
         </Providers>
       </body>
     </html>

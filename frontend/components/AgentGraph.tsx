@@ -6,6 +6,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 /* ─── Archetypes ───────────────────────────────────────────────────── */
 
@@ -334,6 +335,7 @@ function draw(ctx: CanvasRenderingContext2D, g: Graph, opts: DrawOpts) {
 /* ─── Component ───────────────────────────────────────────────────── */
 
 export function AgentGraph() {
+  const router = useRouter();
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const graphRef = useRef<Graph | null>(null);
@@ -412,6 +414,17 @@ export function AgentGraph() {
     setTooltip(id !== null ? { x, y, id } : null);
   }, []);
   const onLeave = useCallback(() => { setHoverId(null); setTooltip(null); }, []);
+  const onClick = useCallback((e: React.MouseEvent) => {
+    const g = graphRef.current;
+    if (!g) return;
+    const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const id = nearestAgent(g, x, y);
+    if (id === null) return;
+    const agent = g.agents[id];
+    router.push(`/swarm/${agent.name}`);
+  }, [router]);
 
   const counts = useMemo(() => ARCHETYPES.map(a => a.count), []);
 
@@ -464,9 +477,10 @@ export function AgentGraph() {
       {/* Canvas container */}
       <div
         ref={wrapRef}
-        className="relative w-full overflow-hidden rounded-xl border border-border bg-white/60"
+        className="relative w-full cursor-pointer overflow-hidden rounded-xl border border-border bg-white/60"
         onMouseMove={onMove}
         onMouseLeave={onLeave}
+        onClick={onClick}
       >
         <canvas ref={canvasRef} className="block" />
 
@@ -497,8 +511,9 @@ export function AgentGraph() {
       {/* Caption */}
       <p className="mt-3 text-[11px] leading-relaxed text-muted">
         Nodes are agents, colored by archetype; edges are shared-signal cohorts. Hubs are high-degree agents that
-        coordinate a local quorum. Hover any dot for its current activity. Layout is deterministic — a fixed seed
-        reproduces the same topology every time (the same property the on-chain determinism probe verifies).
+        coordinate a local quorum. Hover for activity, <span className="text-accent">click any dot</span> to open its
+        profile. Layout is deterministic — a fixed seed reproduces the same topology every time (the same property
+        the on-chain determinism probe verifies).
       </p>
     </section>
   );

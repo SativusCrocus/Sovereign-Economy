@@ -4,6 +4,12 @@ import { HealthCard } from "@/components/HealthCard";
 import { GrafanaEmbed } from "@/components/GrafanaEmbed";
 import { HeroLogo } from "@/components/HeroLogo";
 import { AgentGraph } from "@/components/AgentGraph";
+import { SignalTicker } from "@/components/SignalTicker";
+import { CircuitBreakerWidget } from "@/components/CircuitBreakerWidget";
+import { ToolCallHeatmap } from "@/components/ToolCallHeatmap";
+import { CrossChainFlow } from "@/components/CrossChainFlow";
+import { DeterminismTimeline } from "@/components/DeterminismTimeline";
+import { GovernancePanel } from "@/components/GovernancePanel";
 
 const STATS = [
   { label: "Layers",     value: "4",     tint: "from-accent to-accent2",  trail: "cognition · action · settlement · ops" },
@@ -27,7 +33,13 @@ const TILES: readonly Tile[] = [
     desc: "8-state finite machine. Stage signals for 3-of-5 multi-sig — guarded by 4 independent safety stops.",
     tag: "core",
     color: "accent",
-    span: "md:col-span-2",
+  },
+  {
+    href: "/archetypes",
+    title: "Archetypes",
+    desc: "Drill into the 5 swarm archetypes — live signals, PnL, MCP tool usage, representative agents.",
+    tag: "swarm",
+    color: "iris",
   },
   {
     href: "/accounts",
@@ -41,6 +53,13 @@ const TILES: readonly Tile[] = [
     title: "Audit log",
     desc: "Immutable entries pinned across IPFS providers. Fetch any entry by CID.",
     tag: "ipfs",
+    color: "magenta",
+  },
+  {
+    href: "/risk",
+    title: "Risk simulator",
+    desc: "Tune the four safety stops and see how many candidate signals survive each rail.",
+    tag: "sim",
     color: "magenta",
   },
 ];
@@ -96,8 +115,26 @@ export default function Page() {
         ))}
       </section>
 
+      {/* ─── Live signal ticker ─── */}
+      <SignalTicker />
+
+      {/* ─── Cross-chain flow · LayerZero ─── */}
+      <CrossChainFlow />
+
       {/* ─── Agent relationship graph ─── */}
       <AgentGraph />
+
+      {/* ─── Ops pulse row: circuit breaker + tool heatmap ─── */}
+      <section className="grid gap-4 md:grid-cols-[1fr_1.35fr]">
+        <CircuitBreakerWidget />
+        <ToolCallHeatmap />
+      </section>
+
+      {/* ─── Determinism probe timeline ─── */}
+      <DeterminismTimeline />
+
+      {/* ─── DAO governance ─── */}
+      <GovernancePanel />
 
       {/* ─── Live health ─── */}
       <HealthCard />
@@ -109,9 +146,9 @@ export default function Page() {
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="label">Explore</h2>
-          <span className="text-[11px] text-muted">3 subsystems</span>
+          <span className="text-[11px] text-muted">{TILES.length} subsystems</span>
         </div>
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {TILES.map(t => (
             <Link
               key={t.href}

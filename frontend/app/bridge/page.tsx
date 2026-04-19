@@ -5,6 +5,7 @@ import { useAccount, useChainId, useReadContract, useWriteContract } from "wagmi
 import { keccak256, toBytes, type Abi, type Address } from "viem";
 import { ABIS } from "@/lib/contracts";
 import { ADDRESSES, FSM_STATES, SIGNAL_KINDS } from "@/lib/config";
+import { BridgeTxExplorer } from "@/components/BridgeTxExplorer";
 
 export default function BridgePage() {
   const { isConnected } = useAccount();
@@ -125,6 +126,9 @@ export default function BridgePage() {
         )}
       </section>
 
+      {/* Tx explorer */}
+      <BridgeTxExplorer />
+
       {/* Operator actions */}
       <section className="panel-lg space-y-4">
         <h2 className="label">Operator actions</h2>
@@ -136,6 +140,7 @@ export default function BridgePage() {
           >
             {isPending ? "Staging…" : "stageForMultiSig"}
           </button>
+          <a className="btn" href="/bridge/sim">FSM simulator ↗</a>
           <a className="btn" href="/accounts">Agent accounts →</a>
         </div>
         {!isConnected && <p className="text-xs text-warn">Connect a wallet with the operator role.</p>}

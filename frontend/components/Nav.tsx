@@ -5,12 +5,17 @@ import { usePathname } from "next/navigation";
 import { useLayoutEffect, useRef, useState } from "react";
 import { WalletConnect } from "./WalletConnect";
 import { Logo } from "./Logo";
+import { ThemeToggle } from "./ThemeToggle";
+import { CommandPaletteTrigger } from "./CommandPalette";
+import { NotificationsButton } from "./NotificationsButton";
 
 const LINKS = [
-  { href: "/",         label: "Dashboard" },
-  { href: "/bridge",   label: "Bridge"    },
-  { href: "/accounts", label: "Accounts"  },
-  { href: "/audit",    label: "Audit"     },
+  { href: "/",           label: "Dashboard"  },
+  { href: "/bridge",     label: "Bridge"     },
+  { href: "/archetypes", label: "Archetypes" },
+  { href: "/accounts",   label: "Accounts"   },
+  { href: "/audit",      label: "Audit"      },
+  { href: "/docs",       label: "Docs"       },
 ] as const;
 
 interface IndicatorStyle { left: number; width: number; opacity: number }
@@ -73,6 +78,9 @@ export function Nav() {
         </nav>
 
         <div className="flex items-center gap-2">
+          <CommandPaletteTrigger />
+          <NotificationsButton />
+          <ThemeToggle />
           <WalletConnect />
         </div>
       </div>

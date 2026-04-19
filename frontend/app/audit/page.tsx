@@ -2,6 +2,7 @@
 "use client";
 import { useState } from "react";
 import { callTool } from "@/lib/mcp";
+import { AuditLogBrowser } from "@/components/AuditLogBrowser";
 
 interface AuditWriteResult { cid: string; pinned_by: string[] }
 
@@ -85,6 +86,8 @@ export default function AuditPage() {
           </div>
         )}
       </section>
+
+      <AuditLogBrowser />
 
       <section className="panel-lg space-y-5">
         <h2 className="label">Read by CID</h2>

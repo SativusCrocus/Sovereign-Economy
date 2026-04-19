@@ -1,5 +1,6 @@
 // frontend/components/Footer.tsx
 import { Logo } from "./Logo";
+import { HelpHint } from "./CommandPalette";
 
 const LINKS = [
   { href: "https://github.com/SativusCrocus/Sovereign-Economy",        label: "GitHub" },
@@ -37,6 +38,7 @@ export function Footer() {
                 {l.label}
               </a>
             ))}
+            <HelpHint />
           </nav>
         </div>
 

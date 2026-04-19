@@ -1,0 +1,22 @@
+{
+  "name": "DAES · Sovereign Economy",
+  "short_name": "DAES",
+  "description": "Decentralized Autonomous Economic System — 2000-agent swarm, MCP tool execution, 3-of-5 multi-sig bridge. Operator console.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fafbfd",
+  "theme_color": "#0284c7",
+  "categories": ["productivity", "finance", "developer"],
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Bridge",     "short_name": "Bridge", "url": "/bridge" },
+    { "name": "Archetypes", "url": "/archetypes" },
+    { "name": "Audit log",  "url": "/audit" },
+    { "name": "Risk sim",   "url": "/risk" }
+  ]
+}
