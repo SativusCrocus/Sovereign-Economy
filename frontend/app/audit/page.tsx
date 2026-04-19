@@ -10,9 +10,9 @@ export default function AuditPage() {
   const [fetched, setFetched] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  const [subject, setSubject] = useState("operator-console");
+  const [subject, setSubject]     = useState("operator-console");
   const [eventType, setEventType] = useState("manual-entry");
-  const [payload, setPayload] = useState(`{"note":"hello"}`);
+  const [payload, setPayload]     = useState(`{"note":"hello"}`);
   const [writeResult, setWriteResult] = useState<AuditWriteResult | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -43,18 +43,21 @@ export default function AuditPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <header className="space-y-1.5">
+    <div className="space-y-10">
+      <header className="space-y-3">
+        <div className="flex items-center gap-2">
+          <span className="chip border-magenta/40 text-magenta bg-magenta/10">layer 2 · IPFS</span>
+          <span className="chip">immutable</span>
+        </div>
         <h1 className="heading">Audit log</h1>
-        <p className="text-sm text-muted">
-          Write immutable operator entries to IPFS, pinned across multiple providers. Fetch any historical
-          entry by its CID through a public gateway.
+        <p className="subheading">
+          Write immutable operator entries to IPFS, pinned across multiple providers. Fetch any historical entry by its CID through a public gateway.
         </p>
       </header>
 
-      <section className="panel-lg space-y-4">
+      <section className="panel-lg space-y-5">
         <h2 className="label">Write + pin</h2>
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2">
           <label className="block">
             <span className="label">subject</span>
             <input className="input mt-1.5" value={subject} onChange={e => setSubject(e.target.value)} />
@@ -66,24 +69,24 @@ export default function AuditPage() {
           <label className="md:col-span-2 block">
             <span className="label">payload · JSON</span>
             <textarea
-              className="input mt-1.5 min-h-28 font-mono"
+              className="input mt-1.5 min-h-32 font-mono"
               value={payload}
               onChange={e => setPayload(e.target.value)}
             />
           </label>
         </div>
-        <button className="btn-p" disabled={busy} onClick={writeLog}>
+        <button className="btn-p sheen" disabled={busy} onClick={writeLog}>
           {busy ? "Pinning…" : "Write + pin"}
         </button>
         {writeResult && (
-          <div className="mt-2 space-y-2 text-xs">
+          <div className="mt-3 space-y-2 text-xs">
             <div className="kv"><span className="label">cid</span><code className="ml-3 truncate text-accent">{writeResult.cid}</code></div>
             <div className="kv"><span className="label">pinned_by</span><span className="ml-3 text-accent">{writeResult.pinned_by.join(", ")}</span></div>
           </div>
         )}
       </section>
 
-      <section className="panel-lg space-y-4">
+      <section className="panel-lg space-y-5">
         <h2 className="label">Read by CID</h2>
         <div className="flex gap-2">
           <input
@@ -95,7 +98,7 @@ export default function AuditPage() {
           <button className="btn" disabled={!cid} onClick={fetchFromIpfs}>Fetch</button>
         </div>
         {fetched && (
-          <pre className="max-h-80 overflow-auto rounded-md border border-border bg-bg p-3 text-[11px] leading-relaxed">
+          <pre className="max-h-80 overflow-auto rounded-lg border border-border bg-bg/60 p-4 text-[11px] leading-relaxed">
 {fetched}
           </pre>
         )}
@@ -106,7 +109,9 @@ export default function AuditPage() {
       </section>
 
       {err && (
-        <section className="panel border-bad/50 bg-bad/5 text-sm text-bad">error: {err}</section>
+        <section className="panel text-sm text-bad" style={{ borderColor: "rgba(248,113,113,0.4)" }}>
+          error: {err}
+        </section>
       )}
     </div>
   );

@@ -1,9 +1,21 @@
 // frontend/app/layout.tsx
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import { Providers } from "./providers";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
+
+const sans = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
+const mono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3001"),
@@ -44,19 +56,22 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0b0d10",
+  themeColor: "#07080b",
   colorScheme: "dark",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark">
-      <body className="min-h-screen font-mono antialiased bg-bg text-text selection:bg-accent/30">
-        <div className="pointer-events-none fixed inset-0 -z-10 bg-grid opacity-[0.35]" aria-hidden />
-        <div className="pointer-events-none fixed inset-x-0 top-0 -z-10 h-[480px] bg-hero-glow" aria-hidden />
+    <html lang="en" className={`dark ${sans.variable} ${mono.variable}`}>
+      <body className="relative min-h-screen bg-bg font-sans text-text antialiased selection:bg-accent/30 selection:text-text">
+        {/* Ambient layers */}
+        <div className="pointer-events-none fixed inset-x-0 top-0 -z-20 h-[90vh] aurora-2" aria-hidden />
+        <div className="pointer-events-none fixed inset-0 -z-20 bg-grid opacity-[0.25]" aria-hidden />
+        <div className="pointer-events-none fixed inset-0 -z-10 bg-noise mix-blend-overlay" aria-hidden />
+
         <Providers>
           <Nav />
-          <main className="mx-auto w-full max-w-6xl px-4 py-8 md:py-10">{children}</main>
+          <main className="relative mx-auto w-full max-w-6xl px-4 py-8 md:py-12">{children}</main>
           <Footer />
         </Providers>
       </body>

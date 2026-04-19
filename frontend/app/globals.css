@@ -4,35 +4,145 @@
 
 :root { color-scheme: dark; }
 
-html, body { background: theme('colors.bg'); color: theme('colors.text'); }
+html, body {
+  background: theme('colors.bg');
+  color:      theme('colors.text');
+  font-feature-settings: "ss01", "cv11", "liga", "calt";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
 
+/* ─── Aurora mesh background ─────────────────────────────────────── */
+.aurora {
+  background: theme('backgroundImage.aurora');
+  filter: saturate(1.1);
+  animation: aurora 26s ease-in-out infinite;
+}
+.aurora-2 {
+  position: absolute;
+  inset: -20% -10% auto -10%;
+  height: 70vh;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(38rem 22rem at 20% 0%,  rgba(125,211,252,0.22), transparent 60%),
+    radial-gradient(34rem 22rem at 80% 5%,  rgba(167,139,250,0.22), transparent 60%),
+    radial-gradient(32rem 22rem at 50% -5%, rgba(244,114,182,0.12), transparent 65%);
+  filter: blur(24px) saturate(1.15);
+  animation: aurora 26s ease-in-out infinite;
+}
+.aurora-soft {
+  background:
+    radial-gradient(42rem 24rem at 15% 10%, rgba(125,211,252,0.12), transparent 60%),
+    radial-gradient(38rem 24rem at 85% 0%, rgba(167,139,250,0.10), transparent 60%);
+  filter: blur(32px);
+}
+
+/* ─── Grid + grain overlays ───────────────────────────────────────── */
 .bg-grid {
   background-image: theme('backgroundImage.grid');
   background-size: theme('backgroundSize.grid');
-  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 40%, transparent 85%);
-  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 40%, transparent 85%);
+  mask-image: radial-gradient(ellipse 75% 60% at 50% 0%, #000 40%, transparent 85%);
+  -webkit-mask-image: radial-gradient(ellipse 75% 60% at 50% 0%, #000 40%, transparent 85%);
+}
+.bg-noise {
+  background-image: theme('backgroundImage.noise');
+  opacity: 0.035;
+  mix-blend-mode: overlay;
 }
 
+/* ─── Text gradients ──────────────────────────────────────────────── */
+.text-gradient {
+  background-image: theme('backgroundImage.iris-grad');
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.text-shine {
+  background-image: theme('backgroundImage.shine');
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 3s linear infinite;
+}
+
+/* ─── Glass panels with conic gradient border ─────────────────────── */
+.glass {
+  position: relative;
+  background-color: rgba(15, 18, 24, 0.55);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border-radius: 16px;
+  box-shadow: theme('boxShadow.card');
+  overflow: hidden;
+}
+.glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.10) 0%,
+    rgba(255, 255, 255, 0.03) 22%,
+    rgba(31, 38, 46, 0.8) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+}
+.glass-lg {
+  border-radius: 20px;
+  box-shadow: theme('boxShadow.card-lg');
+}
+.glass-colored::before {
+  background: linear-gradient(
+    135deg,
+    rgba(125, 211, 252, 0.4) 0%,
+    rgba(167, 139, 250, 0.25) 50%,
+    rgba(31, 38, 46, 0.8) 100%
+  );
+}
+
+/* ─── Component classes ───────────────────────────────────────────── */
 @layer components {
-  .panel       { @apply rounded-lg border border-border bg-panel/80 p-4 backdrop-blur; }
-  .panel-lg    { @apply rounded-xl border border-border bg-panel/80 p-5 md:p-6 backdrop-blur; }
-  .label       { @apply text-[11px] uppercase tracking-[0.14em] text-muted; }
-  .btn         { @apply inline-flex items-center gap-2 rounded-md border border-border bg-panel px-3 py-1.5 text-sm font-medium text-text transition hover:bg-border hover:border-muted/60 disabled:opacity-50 disabled:cursor-not-allowed; }
-  .btn-p       { @apply btn border-accent/60 text-accent hover:bg-accent/10 hover:border-accent; }
-  .input       { @apply w-full rounded-md border border-border bg-bg px-3 py-1.5 text-sm font-mono placeholder:text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 transition; }
-  .chip        { @apply inline-flex items-center rounded-full border border-border px-2 py-0.5 text-[11px] font-medium uppercase tracking-wider; }
-  .chip-ok     { @apply chip border-good/50 text-good bg-good/5; }
-  .chip-w      { @apply chip border-warn/50 text-warn bg-warn/5; }
-  .chip-b      { @apply chip border-bad/50 text-bad bg-bad/5; }
-  .chip-n      { @apply chip border-accent/40 text-accent bg-accent/5; }
-  .kv          { @apply flex items-center justify-between rounded-md border border-border bg-bg/40 px-3 py-2 text-xs; }
-  .link        { @apply text-accent hover:underline underline-offset-4; }
-  .hair        { @apply border-t border-border; }
-  .heading     { @apply text-3xl font-bold tracking-tight md:text-4xl; }
-  .subheading  { @apply text-lg text-muted md:text-xl; }
+  .panel       { @apply glass p-4 md:p-5; }
+  .panel-lg    { @apply glass glass-lg p-5 md:p-7; }
+  .panel-hero  { @apply glass glass-lg glass-colored p-6 md:p-10; }
+
+  .label       { @apply text-[10px] font-mono uppercase tracking-[0.2em] text-muted; }
+
+  .btn         { @apply inline-flex items-center gap-2 rounded-lg border border-border/80 bg-panel/60 px-3.5 py-2 text-sm font-medium text-text backdrop-blur transition-all duration-200 ease-silk hover:-translate-y-[1px] hover:bg-panel hover:border-border2 hover:shadow-card disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0; }
+  .btn-p       { @apply btn border-accent/40 bg-accent/10 text-accent hover:bg-accent/15 hover:border-accent hover:shadow-glow; }
+  .btn-iris    { @apply btn border-iris/40 bg-iris/10 text-iris hover:bg-iris/15 hover:border-iris hover:shadow-glow-v; }
+
+  .input       { @apply w-full rounded-lg border border-border bg-bg/60 px-3.5 py-2 text-sm font-mono placeholder:text-subtle backdrop-blur focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 transition-all duration-200; }
+
+  .chip        { @apply inline-flex items-center rounded-full border border-border bg-panel/60 backdrop-blur px-2.5 py-0.5 text-[10px] font-mono font-medium uppercase tracking-[0.14em]; }
+  .chip-ok     { @apply chip border-good/40 text-good bg-good/10; }
+  .chip-w      { @apply chip border-warn/40 text-warn bg-warn/10; }
+  .chip-b      { @apply chip border-bad/40 text-bad bg-bad/10; }
+  .chip-n      { @apply chip border-accent/40 text-accent bg-accent/10; }
+  .chip-i      { @apply chip border-iris/40 text-iris bg-iris/10; }
+
+  .kv          { @apply flex items-center justify-between rounded-lg border border-border/60 bg-bg/30 px-3 py-2 text-xs backdrop-blur; }
+  .link        { @apply text-accent hover:text-iris transition-colors underline-offset-4 hover:underline; }
+  .hair        { @apply border-t border-border/60; }
+
+  .heading     { @apply text-hero font-display text-text; }
+  .display     { @apply text-display font-display text-text; }
+  .subheading  { @apply text-base md:text-lg text-muted leading-relaxed max-w-2xl; }
+
+  .tile-hover  { @apply transition-all duration-300 ease-silk hover:-translate-y-1 hover:shadow-tilt; }
 }
 
-/* pulsing status dot */
+/* ─── Pulsing status dot ──────────────────────────────────────────── */
 .pulse-dot::before {
   content: "";
   display: inline-block;
@@ -49,4 +159,49 @@ html, body { background: theme('colors.bg'); color: theme('colors.text'); }
   0%   { box-shadow: 0 0 0 0   rgba(74,222,128,0.6); }
   70%  { box-shadow: 0 0 0 8px rgba(74,222,128,0);   }
   100% { box-shadow: 0 0 0 0   rgba(74,222,128,0);   }
+}
+
+/* ─── Smooth scrollbars, decorative but subtle ────────────────────── */
+::-webkit-scrollbar             { width: 10px; height: 10px; }
+::-webkit-scrollbar-track       { background: transparent; }
+::-webkit-scrollbar-thumb       { background: #1d2230; border-radius: 9999px; border: 2px solid #07080b; }
+::-webkit-scrollbar-thumb:hover { background: #2a3142; }
+
+/* ─── Animated shine for CTA sweeps ───────────────────────────────── */
+.sheen {
+  position: relative;
+  overflow: hidden;
+}
+.sheen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: theme('backgroundImage.shine');
+  background-size: 200% 100%;
+  animation: shimmer 3s linear infinite;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  opacity: 0.8;
+}
+
+/* ─── Tilt-on-hover utility ───────────────────────────────────────── */
+.tilt-3d {
+  transform-style: preserve-3d;
+  perspective: 1000px;
+  transition: transform 600ms theme('transitionTimingFunction.silk');
+}
+.tilt-3d:hover  { transform: perspective(1000px) rotateX(4deg) rotateY(-6deg) translateZ(0); }
+
+/* ─── Smooth focus rings on keyboard nav ──────────────────────────── */
+:focus-visible {
+  outline: 2px solid rgba(125,211,252,0.55);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ─── Reduced motion ──────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .aurora, .aurora-2, .text-shine, .sheen::after,
+  [class*="animate-"] { animation: none !important; }
+  .tilt-3d:hover { transform: none !important; }
 }

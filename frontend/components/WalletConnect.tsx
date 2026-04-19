@@ -14,7 +14,11 @@ export function WalletConnect() {
   if (!isConnected) {
     const c = connectors[0];
     return (
-      <button className="btn-p" disabled={status === "pending"} onClick={() => c && connect({ connector: c })}>
+      <button
+        className="btn-p sheen !px-4"
+        disabled={status === "pending"}
+        onClick={() => c && connect({ connector: c })}
+      >
         {status === "pending" ? "Connecting…" : "Connect wallet"}
       </button>
     );
@@ -26,14 +30,14 @@ export function WalletConnect() {
     <div className="flex items-center gap-2">
       <select
         aria-label="Switch chain"
-        className="input !w-auto !py-1 !text-xs"
+        className="input !w-auto !py-1 !px-2 !text-xs"
         value={chainId ?? ""}
         onChange={(e) => switchChain({ chainId: Number(e.target.value) })}
       >
         {chains.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
       </select>
-      <span className="chip-ok font-mono" title={address}>{short(address!)}</span>
-      <button className="btn !py-1 !text-xs" onClick={() => disconnect()}>Disconnect</button>
+      <span className="chip-ok pulse-dot font-mono" title={address}>{short(address!)}</span>
+      <button className="btn !py-1 !px-3 !text-xs" onClick={() => disconnect()}>Disconnect</button>
       <span className="sr-only">Connected on {chainName}</span>
     </div>
   );

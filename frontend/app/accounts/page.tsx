@@ -38,9 +38,9 @@ export default function AccountsPage() {
             nonce:              "0x0",
             initCode:           "0x",
             callData,
-            accountGasLimits:   "0x0000000000000000000000000001388800000000000000000000000000013888", // 80k/80k
+            accountGasLimits:   "0x0000000000000000000000000001388800000000000000000000000000013888",
             preVerificationGas: "0x5208",
-            gasFees:            "0x00000000000000000000000077359400000000000000000000000000059682f0", // 2 gwei / 100 gwei
+            gasFees:            "0x00000000000000000000000077359400000000000000000000000000059682f0",
             paymasterAndData:   "0x",
             signature:          "0x",
           },
@@ -55,11 +55,15 @@ export default function AccountsPage() {
   const eid = LZ_EID[chainId as keyof typeof LZ_EID];
 
   return (
-    <div className="space-y-6">
-      <header className="space-y-1.5">
+    <div className="space-y-10">
+      <header className="space-y-3">
+        <div className="flex items-center gap-2">
+          <span className="chip-i">layer 2 · action</span>
+          <span className="chip">ERC-4337 v0.7</span>
+        </div>
         <h1 className="heading">Agent accounts</h1>
-        <p className="text-sm text-muted">
-          Sign ERC-4337 v0.7 UserOperations as a swarm archetype and submit via the Pimlico bundler.
+        <p className="subheading">
+          Sign <code className="text-accent">UserOperation</code>s as a swarm archetype and submit via the Pimlico bundler.
           Keys are provisioned per archetype — in production, via HSM.
         </p>
       </header>
@@ -67,25 +71,29 @@ export default function AccountsPage() {
       <section className="grid gap-3 md:grid-cols-3">
         <div className="panel">
           <div className="label">EntryPoint · v0.7</div>
-          <code className="mt-1 block break-all text-[11px] text-accent">{ENTRYPOINT_V07}</code>
+          <code className="mt-2 block break-all text-[11px] text-accent">{ENTRYPOINT_V07}</code>
         </div>
         <div className="panel">
           <div className="label">Chain</div>
-          <div className="mt-1 text-sm font-semibold text-text">chain-id {chainId}</div>
+          <div className="mt-2 text-xl font-semibold text-text">chain-id {chainId}</div>
           <div className="text-xs text-muted">LayerZero eid · {eid ?? "—"}</div>
         </div>
         <div className="panel">
           <div className="label">Connected wallet</div>
-          <code className="mt-1 block break-all text-[11px] text-accent">{address ?? "—"}</code>
+          <code className="mt-2 block break-all text-[11px] text-accent">{address ?? "— not connected"}</code>
         </div>
       </section>
 
-      <section className="panel-lg space-y-4">
+      <section className="panel-lg space-y-5">
         <h2 className="label">Sign + bundler-submit a UserOp</h2>
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2">
           <label className="block">
             <span className="label">Archetype</span>
-            <select className="input mt-1.5" value={archetype} onChange={e => setArchetype(Number(e.target.value))}>
+            <select
+              className="input mt-1.5"
+              value={archetype}
+              onChange={e => setArchetype(Number(e.target.value))}
+            >
               {ARCHETYPES.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           </label>
@@ -107,7 +115,11 @@ export default function AccountsPage() {
           </label>
         </div>
         <div className="flex items-center gap-3 pt-1">
-          <button className="btn-p" disabled={!isConnected || busy} onClick={submit}>
+          <button
+            className="btn-iris sheen"
+            disabled={!isConnected || busy}
+            onClick={submit}
+          >
             {busy ? "Signing…" : "Sign + submit via Pimlico"}
           </button>
           {!isConnected && <span className="text-xs text-warn">Connect a wallet first.</span>}
@@ -115,21 +127,20 @@ export default function AccountsPage() {
       </section>
 
       {err && (
-        <section className="panel border-bad/50 bg-bad/5 text-sm text-bad">error: {err}</section>
+        <section className="panel border-bad/50 text-sm text-bad" style={{ borderColor: "rgba(248,113,113,0.4)" }}>
+          error: {err}
+        </section>
       )}
 
       {result && (
-        <section className="panel-lg space-y-2 text-xs">
+        <section className="panel-lg space-y-3 text-xs">
           <h2 className="label">Result</h2>
           <div className="kv"><span className="label">userOpHash</span><code className="ml-3 truncate text-accent">{result.user_op_hash}</code></div>
           <div className="kv"><span className="label">signer</span><code className="ml-3 truncate text-accent">{result.signer_address}</code></div>
-          <div className="kv">
-            <span className="label">bundler tx</span>
-            <code className="ml-3 truncate text-accent">{result.bundler_tx_hash ?? "(not submitted — set PIMLICO_API_KEY)"}</code>
-          </div>
+          <div className="kv"><span className="label">bundler tx</span><code className="ml-3 truncate text-accent">{result.bundler_tx_hash ?? "(not submitted — set PIMLICO_API_KEY)"}</code></div>
           <details className="mt-2">
-            <summary className="cursor-pointer text-muted hover:text-accent">signed UserOp · debug</summary>
-            <pre className="mt-2 max-h-80 overflow-auto rounded-md border border-border bg-bg p-2 text-[11px]">
+            <summary className="cursor-pointer text-muted hover:text-accent transition-colors">signed UserOp · debug</summary>
+            <pre className="mt-2 max-h-80 overflow-auto rounded-lg border border-border bg-bg/60 p-3 text-[11px] leading-relaxed">
 {JSON.stringify(result.signed_user_op, null, 2)}
             </pre>
           </details>
