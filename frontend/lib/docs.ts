@@ -20,20 +20,20 @@ function repoRoot(): string {
 }
 
 function docsDir(): string {
-  // When Next runs from the frontend/ directory (which it does for both dev
-  // and build), `process.cwd()` is frontend/. Fall back to scanning from
-  // there if the repo-root docs/ is missing.
+  // Prefer the frontend-local copy (`frontend/docs/`) so production builds
+  // that don't upload the repo root — like Vercel — still find the docs.
+  // Fall back to the monorepo root for local development.
   const candidates = [
+    path.join(process.cwd(), "docs"),
     path.join(repoRoot(), "docs"),
     path.join(process.cwd(), "..", "docs"),
-    path.join(process.cwd(), "docs"),
   ];
   for (const c of candidates) {
     try {
       if (fs.statSync(c).isDirectory()) return c;
     } catch {}
   }
-  return path.join(repoRoot(), "docs");
+  return path.join(process.cwd(), "docs");
 }
 
 export function listDocs(): DocMeta[] {
