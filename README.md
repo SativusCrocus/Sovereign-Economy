@@ -10,12 +10,17 @@
 </p>
 
 <p align="center">
+  <a href="https://frontend-eight-pearl-52.vercel.app"><img alt="live demo" src="https://img.shields.io/badge/live-console-7dd3fc?style=flat-square&labelColor=0b0d10&logo=vercel&logoColor=7dd3fc"/></a>
   <a href="#hard-constraint-compliance"><img alt="layers" src="https://img.shields.io/badge/layers-4-7dd3fc?style=flat-square&labelColor=0b0d10"/></a>
   <a href="#safety-architecture-at-a-glance"><img alt="multi-sig" src="https://img.shields.io/badge/multi--sig-3--of--5-38bdf8?style=flat-square&labelColor=0b0d10"/></a>
   <a href="#safety-architecture-at-a-glance"><img alt="timelock" src="https://img.shields.io/badge/timelock-86400s-fbbf24?style=flat-square&labelColor=0b0d10"/></a>
   <a href="deploy/docker-compose.yaml"><img alt="compose" src="https://img.shields.io/badge/docker-compose-4ade80?style=flat-square&labelColor=0b0d10&logo=docker&logoColor=4ade80"/></a>
   <a href="deploy/akash/deploy.yaml"><img alt="akash" src="https://img.shields.io/badge/akash-SDL-e6edf3?style=flat-square&labelColor=0b0d10"/></a>
   <a href="frontend"><img alt="next" src="https://img.shields.io/badge/next.js-15-e6edf3?style=flat-square&labelColor=0b0d10&logo=nextdotjs&logoColor=e6edf3"/></a>
+</p>
+
+<p align="center">
+  <a href="https://frontend-eight-pearl-52.vercel.app"><b>🔗 Live operator console →</b></a>
 </p>
 
 ---
@@ -88,7 +93,8 @@ The Next.js 15 + wagmi v2 console at [`frontend/`](frontend/) exposes four views
 | [`/accounts`](frontend/app/accounts/page.tsx) | ERC-4337 v0.7 UserOp signing · Pimlico bundler submit |
 | [`/audit`](frontend/app/audit/page.tsx)       | IPFS audit-log write + read by CID |
 
-The console runs locally at `http://localhost:3001`, or deploys to Vercel as a static + edge build.
+The console runs locally at `http://localhost:3001`, or lives on Vercel at
+**[frontend-eight-pearl-52.vercel.app](https://frontend-eight-pearl-52.vercel.app)** as a static + edge build.
 
 ## 8-hour deploy walkthrough
 
