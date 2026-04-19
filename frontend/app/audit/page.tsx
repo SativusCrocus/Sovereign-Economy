@@ -43,41 +43,71 @@ export default function AuditPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-bold tracking-tight">Audit log</h1>
+    <div className="space-y-6">
+      <header className="space-y-1.5">
+        <h1 className="heading">Audit log</h1>
+        <p className="text-sm text-muted">
+          Write immutable operator entries to IPFS, pinned across multiple providers. Fetch any historical
+          entry by its CID through a public gateway.
+        </p>
+      </header>
 
-      <section className="panel space-y-3">
-        <h2 className="label">Write</h2>
-        <div className="grid grid-cols-2 gap-3">
-          <label className="block"><span className="label">subject</span><input className="input" value={subject} onChange={e => setSubject(e.target.value)} /></label>
-          <label className="block"><span className="label">event_type</span><input className="input" value={eventType} onChange={e => setEventType(e.target.value)} /></label>
-          <label className="col-span-2 block">
-            <span className="label">payload (JSON)</span>
-            <textarea className="input min-h-24" value={payload} onChange={e => setPayload(e.target.value)} />
+      <section className="panel-lg space-y-4">
+        <h2 className="label">Write + pin</h2>
+        <div className="grid gap-3 md:grid-cols-2">
+          <label className="block">
+            <span className="label">subject</span>
+            <input className="input mt-1.5" value={subject} onChange={e => setSubject(e.target.value)} />
+          </label>
+          <label className="block">
+            <span className="label">event_type</span>
+            <input className="input mt-1.5" value={eventType} onChange={e => setEventType(e.target.value)} />
+          </label>
+          <label className="md:col-span-2 block">
+            <span className="label">payload · JSON</span>
+            <textarea
+              className="input mt-1.5 min-h-28 font-mono"
+              value={payload}
+              onChange={e => setPayload(e.target.value)}
+            />
           </label>
         </div>
-        <button className="btn-p" disabled={busy} onClick={writeLog}>{busy ? "Pinning…" : "Write + pin"}</button>
+        <button className="btn-p" disabled={busy} onClick={writeLog}>
+          {busy ? "Pinning…" : "Write + pin"}
+        </button>
         {writeResult && (
-          <div className="text-xs space-y-1">
-            <div><span className="label mr-2">cid</span><code className="text-accent break-all">{writeResult.cid}</code></div>
-            <div><span className="label mr-2">pinned_by</span><span className="text-accent">{writeResult.pinned_by.join(", ")}</span></div>
+          <div className="mt-2 space-y-2 text-xs">
+            <div className="kv"><span className="label">cid</span><code className="ml-3 truncate text-accent">{writeResult.cid}</code></div>
+            <div className="kv"><span className="label">pinned_by</span><span className="ml-3 text-accent">{writeResult.pinned_by.join(", ")}</span></div>
           </div>
         )}
       </section>
 
-      <section className="panel space-y-3">
-        <h2 className="label">Read</h2>
+      <section className="panel-lg space-y-4">
+        <h2 className="label">Read by CID</h2>
         <div className="flex gap-2">
-          <input className="input flex-1" placeholder="bafybei…" value={cid} onChange={e => setCid(e.target.value)} />
+          <input
+            className="input flex-1"
+            placeholder="bafybei…"
+            value={cid}
+            onChange={e => setCid(e.target.value)}
+          />
           <button className="btn" disabled={!cid} onClick={fetchFromIpfs}>Fetch</button>
         </div>
         {fetched && (
-          <pre className="max-h-80 overflow-auto rounded-md border border-border bg-bg p-2 text-xs">{fetched}</pre>
+          <pre className="max-h-80 overflow-auto rounded-md border border-border bg-bg p-3 text-[11px] leading-relaxed">
+{fetched}
+          </pre>
         )}
+        <p className="text-xs text-muted">
+          Read path uses a public IPFS HTTP gateway — <code className="text-accent">{gateway}</code>.
+          Production deployments should host a private gateway to avoid leaking CID access patterns.
+        </p>
       </section>
 
-      {err && <section className="panel text-bad text-sm">error: {err}</section>}
-      <p className="text-xs text-muted">Read path uses a public IPFS HTTP gateway ({gateway}). Production deployments should host a private gateway to avoid leaking CID access patterns.</p>
+      {err && (
+        <section className="panel border-bad/50 bg-bad/5 text-sm text-bad">error: {err}</section>
+      )}
     </div>
   );
 }

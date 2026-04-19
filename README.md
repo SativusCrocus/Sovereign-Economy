@@ -1,16 +1,72 @@
-# DAES — Decentralized Autonomous Economic System
+<p align="center">
+  <img src="docs/assets/banner.svg" alt="DAES — Decentralized Autonomous Economic System" width="100%" />
+</p>
 
-A 4-layer system: GraphRAG-fed 1000-agent swarm → MCP tool execution → 3-of-5 multi-sig bridge → containerized deployment on Docker Compose or Akash.
+<h1 align="center">DAES · Sovereign Economy</h1>
 
-Evaluation target: **a senior engineer can stand this up in <8 hours.**
+<p align="center">
+  <b>A Decentralized Autonomous Economic System.</b><br/>
+  1000-agent GraphRAG swarm → MCP tool execution → 3-of-5 multi-sig bridge → containerised deploy.
+</p>
+
+<p align="center">
+  <a href="#hard-constraint-compliance"><img alt="layers" src="https://img.shields.io/badge/layers-4-7dd3fc?style=flat-square&labelColor=0b0d10"/></a>
+  <a href="#safety-architecture-at-a-glance"><img alt="multi-sig" src="https://img.shields.io/badge/multi--sig-3--of--5-38bdf8?style=flat-square&labelColor=0b0d10"/></a>
+  <a href="#safety-architecture-at-a-glance"><img alt="timelock" src="https://img.shields.io/badge/timelock-86400s-fbbf24?style=flat-square&labelColor=0b0d10"/></a>
+  <a href="deploy/docker-compose.yaml"><img alt="compose" src="https://img.shields.io/badge/docker-compose-4ade80?style=flat-square&labelColor=0b0d10&logo=docker&logoColor=4ade80"/></a>
+  <a href="deploy/akash/deploy.yaml"><img alt="akash" src="https://img.shields.io/badge/akash-SDL-e6edf3?style=flat-square&labelColor=0b0d10"/></a>
+  <a href="frontend"><img alt="next" src="https://img.shields.io/badge/next.js-15-e6edf3?style=flat-square&labelColor=0b0d10&logo=nextdotjs&logoColor=e6edf3"/></a>
+</p>
+
+---
+
+## About
+
+**DAES** is a four-layer reference architecture for running an autonomous on-chain economy end-to-end: a deterministic
+swarm of 1000 agents reasons over a GraphRAG index, submits validated signals through an MCP tool-execution plane,
+and — only after clearing four independent safety stops — moves capital through a 3-of-5 multi-sig bridge between
+Base and Optimism.
+
+Every component has an OSS fallback. Every action is idempotent, deterministic, and replayable. The evaluation target
+is deliberate: **a senior engineer can stand the whole thing up in under 8 hours.**
+
+<table>
+  <tr>
+    <td align="center" valign="middle" width="180">
+      <img src="docs/assets/logo-mark.svg" alt="DAES mark" width="128" height="128"/>
+    </td>
+    <td valign="middle">
+      <table>
+        <tr>
+          <td><b>Layer 1 · Cognition</b></td>
+          <td><code>agent-swarm-runtime</code> · <code>graph-rag-indexer</code></td>
+        </tr>
+        <tr>
+          <td><b>Layer 2 · Action</b></td>
+          <td><code>mcp-gateway</code> · <code>goose-executor</code></td>
+        </tr>
+        <tr>
+          <td><b>Layer 3 · Settlement</b></td>
+          <td>Solidity — Governor · BridgeExecutor · CircuitBreaker · AgentAccountFactory · DaesOApp</td>
+        </tr>
+        <tr>
+          <td><b>Layer 4 · Operations</b></td>
+          <td>Next.js 15 + wagmi v2 operator console · Grafana · Prometheus</td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+
+---
 
 ## The five deliverables
 
 | # | Artifact | Path |
 |---|----------|------|
 | 1 | Mermaid architecture diagram | [docs/architecture.md](docs/architecture.md) |
-| 2 | Component spec YAML (single source of truth) | [spec/components.yaml](spec/components.yaml) |
-| 3 | Solidity interfaces + reference impls + ABI JSONs | [contracts/interfaces/](contracts/interfaces/) • [contracts/src/](contracts/src/) • [contracts/abi/](contracts/abi/) |
+| 2 | Component spec YAML · single source of truth | [spec/components.yaml](spec/components.yaml) |
+| 3 | Solidity interfaces + reference impls + ABI JSONs | [contracts/interfaces/](contracts/interfaces/) · [contracts/src/](contracts/src/) · [contracts/abi/](contracts/abi/) |
 | 4 | `docker-compose.yaml` | [deploy/docker-compose.yaml](deploy/docker-compose.yaml) |
 | 5 | Akash SDL manifest | [deploy/akash/deploy.yaml](deploy/akash/deploy.yaml) |
 
@@ -20,6 +76,19 @@ Evaluation target: **a senior engineer can stand this up in <8 hours.**
 - **Deterministic agent logic** — `services/agent-swarm-runtime/src/determinism.py` wraps a `numpy.SeedSequence`; `tests/test_determinism.py` asserts same seed ⇒ same `state_hash`. Seeds come from Chainlink VRF in prod, drand as fallback.
 - **No single point of failure** — `graph-rag-indexer` and `mcp-gateway` run `replicas: 2` (Compose `deploy.replicas`, Akash `count: 2`). Bridge has 4 independent stop mechanisms: FSM, multi-sig, timelock, circuit breaker.
 - **Fenced code with filename headers** — every source file begins with a `# path/to/file` header.
+
+## Operator console
+
+The Next.js 15 + wagmi v2 console at [`frontend/`](frontend/) exposes four views:
+
+| Route | Purpose |
+|-------|---------|
+| [`/`](frontend/app/page.tsx)                 | Service-health dashboard · Grafana embed · quick links |
+| [`/bridge`](frontend/app/bridge/page.tsx)     | Signal probe · 8-state FSM visualiser · stage for multi-sig |
+| [`/accounts`](frontend/app/accounts/page.tsx) | ERC-4337 v0.7 UserOp signing · Pimlico bundler submit |
+| [`/audit`](frontend/app/audit/page.tsx)       | IPFS audit-log write + read by CID |
+
+The console runs locally at `http://localhost:3001`, or deploys to Vercel as a static + edge build.
 
 ## 8-hour deploy walkthrough
 
@@ -81,28 +150,31 @@ akash tx deployment create deploy/akash/deploy.yaml --from <your-key>
 
 ```
 Sovereign Economy/
-├── docs/architecture.md              # Artifact 1
-├── spec/components.yaml              # Artifact 2 (source of truth)
+├── docs/
+│   ├── architecture.md                # Artifact 1 — Mermaid diagram
+│   └── assets/{banner,logo-mark}.svg  # Brand assets
+├── spec/components.yaml               # Artifact 2 — source of truth
 ├── contracts/
-│   ├── interfaces/*.sol              # Artifact 3 — 7 Solidity interfaces
-│   ├── src/*.sol                     # Reference implementations (8 contracts, 14 Hardhat tests)
-│   ├── test/*.test.ts                # Hardhat test suite
-│   ├── abi/*.abi.json                # Pre-computed ABI JSONs (solc-generated)
+│   ├── interfaces/*.sol               # Artifact 3 — 7 Solidity interfaces
+│   ├── src/*.sol                      # Reference impls — 8 contracts, 14 Hardhat tests
+│   ├── test/*.test.ts                 # Hardhat test suite
+│   ├── abi/*.abi.json                 # Pre-computed ABI JSONs
 │   ├── hardhat.config.ts
 │   ├── package.json
 │   └── scripts/{extract-abi,deploy-local}.ts
 ├── deploy/
-│   ├── docker-compose.yaml           # Artifact 4
-│   ├── akash/deploy.yaml             # Artifact 5
+│   ├── docker-compose.yaml            # Artifact 4
+│   ├── akash/deploy.yaml              # Artifact 5
 │   ├── .env.example
 │   └── tls/generate-cert.sh
 ├── services/
-│   ├── agent-swarm-runtime/          # Layer 1 — Python 3.12, deterministic swarm
-│   ├── graph-rag-indexer/            # Layer 1 — WB + Comtrade + AIS + Chainlink ingesters
-│   ├── goose-executor/               # Layer 2 — Node 20, MCP client
-│   └── mcp-gateway/                  # Layer 2 — FastAPI, mTLS, JWT, 5 real tool handlers
-├── frontend/                         # Layer 4 — Next.js 15 + wagmi v2 operator console
-│   ├── app/{page,bridge,accounts,audit}.tsx
+│   ├── agent-swarm-runtime/           # Layer 1 · Python 3.12 deterministic swarm
+│   ├── graph-rag-indexer/             # Layer 1 · WB + Comtrade + AIS + Chainlink ingesters
+│   ├── goose-executor/                # Layer 2 · Node 20 MCP client
+│   └── mcp-gateway/                   # Layer 2 · FastAPI mTLS + JWT + 5 tool handlers
+├── frontend/                          # Layer 4 · Next.js 15 + wagmi v2 operator console
+│   ├── app/{page,bridge,accounts,audit}/page.tsx
+│   ├── components/{Logo,Nav,Footer,HealthCard,GrafanaEmbed,WalletConnect}.tsx
 │   ├── lib/{config,contracts,mcp}.ts
 │   └── Dockerfile
 ├── config/
@@ -133,3 +205,9 @@ Four independent failure stops between a swarm signal and an on-chain action:
 4. **Circuit breaker** — >2 failures in 600s auto-pauses; reset only by Guardian or DAO vote
 
 See [docs/architecture.md](docs/architecture.md) for the state diagram.
+
+---
+
+<p align="center">
+  <sub>DAES · Sovereign Economy · built for determinism, gated for safety.</sub>
+</p>

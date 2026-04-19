@@ -25,15 +25,16 @@ export function WalletConnect() {
   return (
     <div className="flex items-center gap-2">
       <select
-        className="input !w-auto !py-1"
+        aria-label="Switch chain"
+        className="input !w-auto !py-1 !text-xs"
         value={chainId ?? ""}
         onChange={(e) => switchChain({ chainId: Number(e.target.value) })}
       >
         {chains.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
       </select>
-      <span className="chip-ok" title={address}>{short(address!)}</span>
-      <button className="btn" onClick={() => disconnect()}>Disconnect</button>
-      <span className="sr-only">on {chainName}</span>
+      <span className="chip-ok font-mono" title={address}>{short(address!)}</span>
+      <button className="btn !py-1 !text-xs" onClick={() => disconnect()}>Disconnect</button>
+      <span className="sr-only">Connected on {chainName}</span>
     </div>
   );
 }
