@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>A Decentralized Autonomous Economic System.</b><br/>
-  1000-agent GraphRAG swarm → MCP tool execution → 3-of-5 multi-sig bridge → containerised deploy.
+  2000-agent GraphRAG swarm → MCP tool execution → 3-of-5 multi-sig bridge → containerised deploy.
 </p>
 
 <p align="center">
@@ -28,7 +28,7 @@
 ## About
 
 **DAES** is a four-layer reference architecture for running an autonomous on-chain economy end-to-end: a deterministic
-swarm of 1000 agents reasons over a GraphRAG index, submits validated signals through an MCP tool-execution plane,
+swarm of 2000 agents reasons over a GraphRAG index, submits validated signals through an MCP tool-execution plane,
 and — only after clearing four independent safety stops — moves capital through a 3-of-5 multi-sig bridge between
 Base and Optimism.
 

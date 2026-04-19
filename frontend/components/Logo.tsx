@@ -12,21 +12,22 @@ export function Logo({ className = "h-6 w-6" }: { className?: string }) {
     >
       <defs>
         <linearGradient id="daes-logo-g" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#7dd3fc" />
-          <stop offset="100%" stopColor="#38bdf8" />
+          <stop offset="0%"  stopColor="#0ea5e9" />
+          <stop offset="55%" stopColor="#7c3aed" />
+          <stop offset="100%" stopColor="#db2777" />
         </linearGradient>
       </defs>
-      <path d="M32 4 L60 32 L32 60 L4 32 Z" stroke="url(#daes-logo-g)" strokeWidth="2.25" strokeLinejoin="round" />
-      <path d="M32 18 L46 32 L32 46 L18 32 Z" stroke="url(#daes-logo-g)" strokeWidth="1.75" fill="#7dd3fc" fillOpacity="0.1" strokeLinejoin="round" />
-      <line x1="32" y1="18" x2="32" y2="8"  stroke="url(#daes-logo-g)" strokeWidth="1.25" strokeLinecap="round" />
-      <line x1="46" y1="32" x2="56" y2="32" stroke="url(#daes-logo-g)" strokeWidth="1.25" strokeLinecap="round" />
-      <line x1="32" y1="46" x2="32" y2="56" stroke="url(#daes-logo-g)" strokeWidth="1.25" strokeLinecap="round" />
-      <line x1="18" y1="32" x2="8"  y2="32" stroke="url(#daes-logo-g)" strokeWidth="1.25" strokeLinecap="round" />
-      <circle cx="32" cy="6"  r="2.5" fill="#e6edf3" />
-      <circle cx="58" cy="32" r="2.5" fill="#e6edf3" />
-      <circle cx="32" cy="58" r="2.5" fill="#e6edf3" />
-      <circle cx="6"  cy="32" r="2.5" fill="#e6edf3" />
-      <circle cx="32" cy="32" r="3.25" fill="url(#daes-logo-g)" />
+      <path d="M32 4 L60 32 L32 60 L4 32 Z"   stroke="url(#daes-logo-g)" strokeWidth="2.5" fill="none" strokeLinejoin="round" />
+      <path d="M32 18 L46 32 L32 46 L18 32 Z" stroke="url(#daes-logo-g)" strokeWidth="2" fill="rgba(14,165,233,0.12)" strokeLinejoin="round" />
+      <line x1="32" y1="18" x2="32" y2="8"  stroke="url(#daes-logo-g)" strokeWidth="1.4" strokeLinecap="round" />
+      <line x1="46" y1="32" x2="56" y2="32" stroke="url(#daes-logo-g)" strokeWidth="1.4" strokeLinecap="round" />
+      <line x1="32" y1="46" x2="32" y2="56" stroke="url(#daes-logo-g)" strokeWidth="1.4" strokeLinecap="round" />
+      <line x1="18" y1="32" x2="8"  y2="32" stroke="url(#daes-logo-g)" strokeWidth="1.4" strokeLinecap="round" />
+      <circle cx="32" cy="6"  r="2.5" fill="#0f172a" />
+      <circle cx="58" cy="32" r="2.5" fill="#0f172a" />
+      <circle cx="32" cy="58" r="2.5" fill="#0f172a" />
+      <circle cx="6"  cy="32" r="2.5" fill="#0f172a" />
+      <circle cx="32" cy="32" r="3.5" fill="url(#daes-logo-g)" />
     </svg>
   );
 }

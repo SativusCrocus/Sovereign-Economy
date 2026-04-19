@@ -51,7 +51,7 @@ export function HealthCard() {
       {!services && !err && (
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-10 animate-pulse rounded-md border border-border bg-bg/40" />
+            <div key={i} className="h-10 animate-pulse rounded-md border border-border bg-white/40" />
           ))}
         </div>
       )}

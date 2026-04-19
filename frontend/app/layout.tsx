@@ -24,50 +24,41 @@ export const metadata: Metadata = {
     template: "%s · DAES",
   },
   description:
-    "DAES — a Decentralized Autonomous Economic System. 1000-agent GraphRAG swarm, MCP tool execution, 3-of-5 multi-sig bridge. Operator console.",
+    "DAES — a Decentralized Autonomous Economic System. 2000-agent GraphRAG swarm, MCP tool execution, 3-of-5 multi-sig bridge. Operator console.",
   applicationName: "DAES Console",
   keywords: [
-    "DAES",
-    "Sovereign Economy",
-    "decentralized",
-    "autonomous agents",
-    "GraphRAG",
-    "MCP",
-    "multi-sig bridge",
-    "Base",
-    "Optimism",
-    "ERC-4337",
+    "DAES", "Sovereign Economy", "decentralized", "autonomous agents",
+    "GraphRAG", "MCP", "multi-sig bridge", "Base", "Optimism", "ERC-4337",
   ],
   authors: [{ name: "DAES" }],
   openGraph: {
     title: "DAES · Sovereign Economy",
     description:
-      "1000-agent swarm → MCP tool execution → 3-of-5 multi-sig bridge. A decentralized autonomous economic system.",
+      "2000-agent swarm → MCP tool execution → 3-of-5 multi-sig bridge. A decentralized autonomous economic system.",
     type: "website",
     siteName: "DAES Console",
   },
   twitter: {
     card: "summary_large_image",
     title: "DAES · Sovereign Economy",
-    description:
-      "1000-agent swarm → MCP tool execution → 3-of-5 multi-sig bridge.",
+    description: "2000-agent swarm → MCP tool execution → 3-of-5 multi-sig bridge.",
   },
   robots: { index: true, follow: true },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#07080b",
-  colorScheme: "dark",
+  themeColor: "#fafbfd",
+  colorScheme: "light",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`dark ${sans.variable} ${mono.variable}`}>
-      <body className="relative min-h-screen bg-bg font-sans text-text antialiased selection:bg-accent/30 selection:text-text">
+    <html lang="en" className={`${sans.variable} ${mono.variable}`}>
+      <body className="relative min-h-screen bg-bg font-sans text-text antialiased selection:bg-accent/20 selection:text-text">
         {/* Ambient layers */}
         <div className="pointer-events-none fixed inset-x-0 top-0 -z-20 h-[90vh] aurora-2" aria-hidden />
-        <div className="pointer-events-none fixed inset-0 -z-20 bg-grid opacity-[0.25]" aria-hidden />
-        <div className="pointer-events-none fixed inset-0 -z-10 bg-noise mix-blend-overlay" aria-hidden />
+        <div className="pointer-events-none fixed inset-0 -z-10 bg-dotgrid opacity-70" aria-hidden />
+        <div className="pointer-events-none fixed inset-0 -z-10 bg-noise" aria-hidden />
 
         <Providers>
           <Nav />

@@ -3,10 +3,11 @@ import Link from "next/link";
 import { HealthCard } from "@/components/HealthCard";
 import { GrafanaEmbed } from "@/components/GrafanaEmbed";
 import { HeroLogo } from "@/components/HeroLogo";
+import { AgentGraph } from "@/components/AgentGraph";
 
 const STATS = [
   { label: "Layers",     value: "4",     tint: "from-accent to-accent2",  trail: "cognition · action · settlement · ops" },
-  { label: "Agents",     value: "1 000", tint: "from-iris to-magenta",    trail: "deterministic swarm · numpy.SeedSequence" },
+  { label: "Agents",     value: "2 000", tint: "from-iris to-magenta",    trail: "deterministic swarm · 5 archetypes" },
   { label: "Signatures", value: "3 / 5", tint: "from-good to-accent",     trail: "agent · human · timelock · DAO" },
   { label: "Timelock",   value: "24 h",  tint: "from-warn to-magenta",    trail: "86 400 s · nothing ships sooner" },
 ] as const;
@@ -49,8 +50,8 @@ export default function Page() {
     <div className="space-y-12">
       {/* ─── Hero ─── */}
       <section className="panel-hero relative overflow-hidden">
-        <div className="pointer-events-none absolute -right-40 -top-32 h-96 w-96 rounded-full bg-iris/15 blur-3xl" aria-hidden />
-        <div className="pointer-events-none absolute -left-20 -bottom-32 h-72 w-72 rounded-full bg-accent/15 blur-3xl" aria-hidden />
+        <div className="pointer-events-none absolute -right-40 -top-32 h-96 w-96 rounded-full bg-iris/10 blur-3xl" aria-hidden />
+        <div className="pointer-events-none absolute -left-20 -bottom-32 h-72 w-72 rounded-full bg-accent/10 blur-3xl" aria-hidden />
 
         <div className="relative grid items-center gap-10 md:grid-cols-[1fr_auto]">
           <div className="space-y-6">
@@ -64,9 +65,9 @@ export default function Page() {
               Economy, gated.
             </h1>
             <p className="subheading">
-              A thousand-agent GraphRAG swarm reasons, proposes, and executes through an MCP tool-execution
-              plane — every action cleared by a 3-of-5 multi-sig bridge and a 24-hour timelock. Monitored here
-              in real time.
+              A two-thousand-agent GraphRAG swarm reasons, proposes, and executes through an MCP tool-execution
+              plane — every action cleared by a 3-of-5 multi-sig bridge and a 24-hour timelock. Monitored here in
+              real time.
             </p>
             <div className="flex flex-wrap gap-3 pt-1">
               <Link className="btn-p sheen" href="/bridge">Open the bridge →</Link>
@@ -95,6 +96,9 @@ export default function Page() {
         ))}
       </section>
 
+      {/* ─── Agent relationship graph ─── */}
+      <AgentGraph />
+
       {/* ─── Live health ─── */}
       <HealthCard />
 
@@ -119,9 +123,9 @@ export default function Page() {
                 className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full opacity-50 blur-3xl transition-all duration-500 ease-silk group-hover:opacity-80 group-hover:scale-110"
                 style={{
                   background:
-                    t.color === "accent"  ? "radial-gradient(circle, rgba(56,189,248,0.35), transparent 70%)" :
-                    t.color === "iris"    ? "radial-gradient(circle, rgba(167,139,250,0.35), transparent 70%)" :
-                                            "radial-gradient(circle, rgba(244,114,182,0.30), transparent 70%)",
+                    t.color === "accent"  ? "radial-gradient(circle, rgba(14,165,233,0.35), transparent 70%)" :
+                    t.color === "iris"    ? "radial-gradient(circle, rgba(124,58,237,0.30), transparent 70%)" :
+                                            "radial-gradient(circle, rgba(219,39,119,0.30), transparent 70%)",
                 }}
                 aria-hidden
               />
@@ -130,7 +134,7 @@ export default function Page() {
                   <span className={
                     t.color === "accent"  ? "chip-n" :
                     t.color === "iris"    ? "chip-i" :
-                                            "chip border-magenta/40 text-magenta bg-magenta/10"
+                                            "chip border-magenta/30 text-magenta bg-magenta/10"
                   }>{t.tag}</span>
                   <span className="text-accent transition-transform duration-300 ease-silk group-hover:translate-x-1">→</span>
                 </div>
