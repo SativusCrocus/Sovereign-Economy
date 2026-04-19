@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 
 interface ServiceHealth { name: string; url: string; ok: boolean; body?: unknown; error?: string }
+interface HealthResponse { services: ServiceHealth[]; demo?: boolean }
 
 export function HealthCard() {
-  const [data, setData] = useState<ServiceHealth[] | null>(null);
+  const [data, setData] = useState<HealthResponse | null>(null);
   const [err, setErr]   = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
@@ -15,8 +16,8 @@ export function HealthCard() {
       try {
         const r = await fetch("/api/health", { cache: "no-store" });
         if (!r.ok) throw new Error(`status ${r.status}`);
-        const body = await r.json();
-        if (!cancelled) { setData(body.services); setErr(null); setLastUpdate(new Date()); }
+        const body = await r.json() as HealthResponse;
+        if (!cancelled) { setData(body); setErr(null); setLastUpdate(new Date()); }
       } catch (e) { if (!cancelled) setErr((e as Error).message); }
     };
     tick();
@@ -24,17 +25,21 @@ export function HealthCard() {
     return () => { cancelled = true; clearInterval(id); };
   }, []);
 
-  const okCount   = data?.filter(s => s.ok).length ?? 0;
-  const total     = data?.length ?? 0;
+  const services  = data?.services ?? null;
+  const okCount   = services?.filter(s => s.ok).length ?? 0;
+  const total     = services?.length ?? 0;
   const allOk     = total > 0 && okCount === total;
   const someDown  = total > 0 && okCount < total;
 
   return (
     <section className="panel">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="label">Service health</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="label">Service health</h2>
+          {data?.demo && <span className="chip-w">preview</span>}
+        </div>
         <div className="flex items-center gap-2 text-[11px] text-muted">
-          {data && (
+          {services && (
             <span className={allOk ? "chip-ok" : someDown ? "chip-w" : "chip-b"}>
               {okCount} / {total} ok
             </span>
@@ -43,16 +48,16 @@ export function HealthCard() {
         </div>
       </div>
       {err && <p className="text-bad text-sm">{err}</p>}
-      {!data && !err && (
+      {!services && !err && (
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="h-10 animate-pulse rounded-md border border-border bg-bg/40" />
           ))}
         </div>
       )}
-      {data && (
+      {services && (
         <ul className="grid grid-cols-2 gap-2 md:grid-cols-4">
-          {data.map(s => (
+          {services.map(s => (
             <li key={s.name} className="kv">
               <span className="truncate text-text">{s.name}</span>
               <span
@@ -64,6 +69,12 @@ export function HealthCard() {
             </li>
           ))}
         </ul>
+      )}
+      {data?.demo && (
+        <p className="mt-3 text-[11px] leading-relaxed text-muted">
+          This deploy runs on Vercel without a reachable DAES backend, so health probes return a deterministic sample.
+          Run <code className="text-accent">docker compose up</code> locally to see real probes on <code className="text-accent">localhost:3001</code>.
+        </p>
       )}
     </section>
   );
