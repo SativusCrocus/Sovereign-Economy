@@ -112,8 +112,8 @@ jobs:
           cd services/agent-swarm-runtime
           pip install -e .
           pip install pytest
-          mkdir -p /spec
-          cp ../../spec/components.yaml /spec/components.yaml
+          sudo mkdir -p /spec
+          sudo cp ../../spec/components.yaml /spec/components.yaml
       - name: Swarm determinism (test_determinism.py)
         run: |
           cd services/agent-swarm-runtime
