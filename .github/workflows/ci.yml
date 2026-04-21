@@ -114,14 +114,10 @@ jobs:
           pip install pytest
           sudo mkdir -p /spec
           sudo cp ../../spec/components.yaml /spec/components.yaml
-      - name: Swarm determinism (test_determinism.py)
+      - name: Swarm runtime tests (determinism + all others)
         run: |
           cd services/agent-swarm-runtime
-          pytest tests/test_determinism.py -v
-      - name: Remaining swarm runtime tests
-        run: |
-          cd services/agent-swarm-runtime
-          pytest tests/ -v --ignore=tests/test_determinism.py
+          pytest tests/ -v
 
   goose-executor:
     runs-on: ubuntu-latest
