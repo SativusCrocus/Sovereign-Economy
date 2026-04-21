@@ -6,6 +6,7 @@ deploy/tls/*.crt
 node_modules/
 __pycache__/
 *.pyc
+*.egg-info/
 .venv/
 # Hardhat
 contracts/cache/
