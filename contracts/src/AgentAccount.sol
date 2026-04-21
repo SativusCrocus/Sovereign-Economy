@@ -2,6 +2,8 @@
 // contracts/src/AgentAccount.sol
 pragma solidity ^0.8.24;
 
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import "../interfaces/IAgentAccount.sol";
 
 /// @notice Minimal EIP-4337 v0.7 smart account bound to a swarm archetype.
@@ -45,9 +47,12 @@ contract AgentAccount is IAgentAccount {
         bytes32 userOpHash,
         uint256 missingAccountFunds
     ) external onlyEntryPoint returns (uint256 validationData) {
-        // Minimal signature check: owner signs the userOpHash with EIP-191.
-        address recovered = _recover(userOpHash, userOp.signature);
-        validationData = recovered == owner ? 0 : 1; // SIG_VALIDATION_FAILED
+        // EIP-191 personal_sign recovery via OZ ECDSA — rejects malleable `s`
+        // (upper-half secp256k1n) and malformed signatures. Failure returns
+        // SIG_VALIDATION_FAILED (=1) rather than reverting, per 4337 v0.7.
+        bytes32 digest = MessageHashUtils.toEthSignedMessageHash(userOpHash);
+        (address recovered, ECDSA.RecoverError err, ) = ECDSA.tryRecover(digest, userOp.signature);
+        validationData = (err == ECDSA.RecoverError.NoError && recovered == owner) ? 0 : 1;
         nonce = userOp.nonce;
         emit UserOpValidated(userOp.sender, userOp.nonce, validationData);
 
@@ -77,20 +82,6 @@ contract AgentAccount is IAgentAccount {
     }
 
     receive() external payable {}
-
-    function _recover(bytes32 hash, bytes memory sig) private pure returns (address) {
-        if (sig.length != 65) return address(0);
-        bytes32 r; bytes32 s; uint8 v;
-        assembly {
-            r := mload(add(sig, 32))
-            s := mload(add(sig, 64))
-            v := byte(0, mload(add(sig, 96)))
-        }
-        if (v < 27) v += 27;
-        // Prefix per EIP-191 personal_sign.
-        bytes32 digest = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
-        return ecrecover(digest, v, r, s);
-    }
 
     function _revertReason(bytes memory ret) private pure returns (string memory) {
         if (ret.length < 68) return "call reverted";

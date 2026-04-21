@@ -23,6 +23,7 @@ interface IDAESGovernor {
     event ActionSigned(bytes32 indexed actionId, SignerRole indexed role, address indexed signer);
     event ActionExecuted(bytes32 indexed actionId, bytes returnData);
     event ActionRejected(bytes32 indexed actionId, string reason);
+    event SignerRotated(SignerRole indexed role, address oldSigner, address newSigner);
 
     /// @notice Stage an action for signing. Callable only by the BridgeExecutor.
     function stageAction(bytes32 actionId, address target, uint256 value, bytes calldata data) external;
@@ -35,6 +36,11 @@ interface IDAESGovernor {
 
     /// @notice Reject an action explicitly. Requires HumanGuardian or DAOSnapshot role.
     function rejectAction(bytes32 actionId, string calldata reason) external;
+
+    /// @notice Rotate the address in a signer slot. Callable only by the governor
+    ///         itself — reach it through the stage/sign/execute path, which enforces
+    ///         3-of-5 quorum and the 86400s timelock on rotation itself.
+    function rotateSigner(SignerRole role, address newSigner) external;
 
     function getAction(bytes32 actionId) external view returns (StagedAction memory);
 }

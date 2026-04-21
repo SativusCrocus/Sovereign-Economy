@@ -2,7 +2,16 @@
 import type { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 
-const { BASE_RPC_URL, OP_RPC_URL, LOCAL_RPC_URL, DEPLOYER_PRIVATE_KEY } = process.env;
+const {
+  BASE_RPC_URL,
+  OP_RPC_URL,
+  BASE_SEPOLIA_RPC_URL,
+  OP_SEPOLIA_RPC_URL,
+  LOCAL_RPC_URL,
+  DEPLOYER_PRIVATE_KEY,
+} = process.env;
+
+const accounts = DEPLOYER_PRIVATE_KEY ? [DEPLOYER_PRIVATE_KEY] : [];
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -29,15 +38,27 @@ const config: HardhatUserConfig = {
       url: LOCAL_RPC_URL ?? "http://blockchain-node:8545",
       chainId: 31337,
     },
+    // --- Testnets (Tier 2 deployment targets) ---
+    baseSepolia: {
+      url: BASE_SEPOLIA_RPC_URL ?? "https://sepolia.base.org",
+      chainId: 84532,
+      accounts,
+    },
+    opSepolia: {
+      url: OP_SEPOLIA_RPC_URL ?? "https://sepolia.optimism.io",
+      chainId: 11155420,
+      accounts,
+    },
+    // --- Mainnets (Tier 4; require DAES_ALLOW_MAINNET=1 in scripts/deploy.ts) ---
     base: {
       url: BASE_RPC_URL ?? "https://mainnet.base.org",
       chainId: 8453,
-      accounts: DEPLOYER_PRIVATE_KEY ? [DEPLOYER_PRIVATE_KEY] : [],
+      accounts,
     },
     optimism: {
       url: OP_RPC_URL ?? "https://mainnet.optimism.io",
       chainId: 10,
-      accounts: DEPLOYER_PRIVATE_KEY ? [DEPLOYER_PRIVATE_KEY] : [],
+      accounts,
     },
   },
   mocha: { timeout: 120_000 },

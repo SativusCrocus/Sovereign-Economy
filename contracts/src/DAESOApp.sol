@@ -2,75 +2,70 @@
 // contracts/src/DAESOApp.sol
 pragma solidity ^0.8.24;
 
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import {
+    OApp,
+    Origin,
+    MessagingFee,
+    MessagingReceipt
+} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/OApp.sol";
+
 import "../interfaces/ILayerZeroOApp.sol";
 
-/// @notice Minimal LayerZero V2 OApp reference. Delegates all messaging
-///         to the real LZ endpoint at `endpointAddr` (Base/OP mainnet:
-///         0x1a44076050125825900e736c501f859c50fE728c).
-///         Peers are managed by the governor; only the configured
-///         governor can setPeer / send.
+/// @notice DAES cross-chain OApp on LayerZero V2. Owner (= DAESGovernor) holds
+///         `setPeer` / `sendMessage` authority; the governor reaches these via
+///         its 3-of-5 + 86400s staged-action pipeline.
 ///
-/// @dev Lightweight shim so the bridge FSM compiles and can be tested
-///      locally. In production, import the layerzero-labs oapp package
-///      and inherit from OAppSender/OAppReceiver.
-contract DAESOApp is ILayerZeroOApp {
-    address public immutable endpointAddr;
-    address public immutable governor;
+///         Deployed once per chain. Mainnet endpoint is shared across Base
+///         and Optimism (0x1a44076050125825900e736c501f859c50fE728c); Sepolia
+///         testnet endpoint is also shared (0x6EDCE65403992e310A62460808c4b910D972f10f).
+contract DAESOApp is OApp, ILayerZeroOApp {
+    constructor(address endpoint_, address governor_)
+        OApp(endpoint_, governor_)
+        Ownable(governor_)
+    {}
 
-    mapping(uint32 => bytes32) private _peers;
-
-    error NotGovernor();
-    error NotEndpoint();
-    error NoPeer(uint32 eid);
-
-    constructor(address endpoint_, address governor_) {
-        endpointAddr = endpoint_;
-        governor     = governor_;
-    }
-
-    modifier onlyGovernor() {
-        if (msg.sender != governor) revert NotGovernor();
-        _;
-    }
-
-    function endpoint() external view returns (address) {
-        return endpointAddr;
-    }
-
-    function peers(uint32 eid) external view returns (bytes32) {
-        return _peers[eid];
-    }
-
-    function setPeer(uint32 eid, bytes32 peer) external onlyGovernor {
-        _peers[eid] = peer;
-    }
-
-    /// @dev In production this calls IEndpointV2(endpointAddr).quote(...).
-    ///      For a local-compilable reference we return 1 wei native, 0 lz.
-    function quote(MessagingParams calldata, address) external pure returns (MessagingFee memory) {
-        return MessagingFee({ nativeFee: 1, lzTokenFee: 0 });
-    }
-
-    function send(MessagingParams calldata params, address /*refundAddress*/)
-        external payable onlyGovernor returns (MessagingReceipt memory)
-    {
-        if (_peers[params.dstEid] == bytes32(0)) revert NoPeer(params.dstEid);
-        bytes32 guid = keccak256(
-            abi.encodePacked(block.chainid, params.dstEid, _peers[params.dstEid], params.message, block.number)
+    /// @notice Send an arbitrary payload to the peer OApp on `dstEid`.
+    ///         msg.value must cover the quoted native fee; excess is refunded
+    ///         to msg.sender by the endpoint.
+    function sendMessage(
+        uint32 dstEid,
+        bytes calldata message,
+        bytes calldata options
+    ) external payable onlyOwner returns (MessagingReceipt memory receipt) {
+        receipt = _lzSend(
+            dstEid,
+            message,
+            options,
+            MessagingFee({ nativeFee: msg.value, lzTokenFee: 0 }),
+            payable(msg.sender)
         );
-        MessagingReceipt memory r = MessagingReceipt({
-            guid: guid,
-            nonce: uint64(block.number),
-            fee: MessagingFee({ nativeFee: msg.value, lzTokenFee: 0 })
-        });
-        emit MessageSent(guid, params.dstEid, r.nonce);
-        return r;
+        emit MessageSent(receipt.guid, dstEid, receipt.nonce);
     }
 
-    function lzReceive(Origin calldata origin, bytes32 guid, bytes calldata, address, bytes calldata)
-        external payable
-    {
-        if (msg.sender != endpointAddr) revert NotEndpoint();
+    /// @notice Quote the cost of delivering `message` to `dstEid` with the
+    ///         given executor `options`.
+    function quoteSend(
+        uint32 dstEid,
+        bytes calldata message,
+        bytes calldata options,
+        bool payInLzToken
+    ) external view returns (MessagingFee memory fee) {
+        return _quote(dstEid, message, options, payInLzToken);
+    }
+
+    /// @dev Handle inbound messages. The LayerZero endpoint has already
+    ///      verified the sender is the peer registered for `origin.srcEid`
+    ///      via `OAppReceiver`'s `_assertPeer` check — the override body can
+    ///      trust `origin` and focus on application-level decoding. For now
+    ///      we only emit the receipt event; the bridge daemon consumes it.
+    function _lzReceive(
+        Origin calldata origin,
+        bytes32 guid,
+        bytes calldata /*message*/,
+        address /*executor*/,
+        bytes calldata /*extraData*/
+    ) internal override {
         emit MessageReceived(guid, origin.srcEid, origin.sender, origin.nonce);
     }
 }

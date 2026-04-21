@@ -1,0 +1,28 @@
+# contracts/foundry.toml
+# Foundry lives alongside Hardhat: Hardhat owns unit tests + deploys, Foundry
+# owns invariant + fuzz tests that exercise the FSM safety property
+# (`never EXECUTED without 3-of-5 && 86400s elapsed && !isPaused`).
+#
+# Usage:
+#   cd contracts && forge build
+#   cd contracts && forge test --match-path "test-forge/**"
+[profile.default]
+src = "src"
+test = "test-forge"
+out = "forge-out"
+libs = ["lib", "node_modules"]
+cache_path = "forge-cache"
+evm_version = "cancun"
+solc = "0.8.24"
+optimizer = true
+optimizer_runs = 200
+remappings = [
+  "forge-std/=lib/forge-std/src/",
+  "@openzeppelin/=node_modules/@openzeppelin/",
+  "@layerzerolabs/=node_modules/@layerzerolabs/",
+]
+
+[invariant]
+runs = 64
+depth = 64
+fail_on_revert = false

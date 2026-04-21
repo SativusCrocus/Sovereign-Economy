@@ -1,0 +1,15 @@
+# config/grafana/provisioning/datasources/prometheus.yml
+# Auto-registered on Grafana boot. Points at the in-compose Prometheus service.
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    uid: daes-prometheus
+    jsonData:
+      httpMethod: POST
+      timeInterval: 15s

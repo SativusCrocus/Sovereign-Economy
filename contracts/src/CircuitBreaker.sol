@@ -8,8 +8,11 @@ import "../interfaces/ICircuitBreaker.sol";
 ///         Ring buffer of failure timestamps; tripped when ≥3 failures
 ///         fall inside the trailing 600s window.
 ///         Reset gated to `guardian` (set at construction).
+///         `recordFailure` is gated to the BridgeExecutor — addresses
+///         M-1 (ring-displacement attack by spamming failures).
 contract CircuitBreaker is ICircuitBreaker {
     address public guardian;
+    address public bridge;
 
     uint64[CB_FAILURE_THRESHOLD + 1] private _ring;
     uint8  private _ringIdx;
@@ -17,6 +20,9 @@ contract CircuitBreaker is ICircuitBreaker {
 
     error NotGuardian();
     error NotPaused();
+    error NotBridge();
+    error BridgeAlreadySet();
+    error ZeroBridge();
 
     constructor(address guardian_) {
         guardian = guardian_;
@@ -26,8 +32,24 @@ contract CircuitBreaker is ICircuitBreaker {
         if (msg.sender != guardian) revert NotGuardian();
         _;
     }
+    modifier onlyBridge() {
+        if (msg.sender != bridge) revert NotBridge();
+        _;
+    }
 
-    function recordFailure(FailureKind kind) external {
+    /// @notice One-time bootstrap. Guardian binds the BridgeExecutor after
+    ///         the bridge is deployed. After this returns, `recordFailure`
+    ///         only accepts calls from that address; no subsequent rotation
+    ///         is possible (circular authority across contracts is too
+    ///         brittle to expose to live governance flows).
+    function setBridge(address bridge_) external onlyGuardian {
+        if (bridge != address(0)) revert BridgeAlreadySet();
+        if (bridge_ == address(0)) revert ZeroBridge();
+        bridge = bridge_;
+        emit BridgeSet(bridge_);
+    }
+
+    function recordFailure(FailureKind kind) external onlyBridge {
         uint64 ts = uint64(block.timestamp);
         _ring[_ringIdx] = ts;
         _ringIdx = uint8((_ringIdx + 1) % _ring.length);

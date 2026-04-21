@@ -303,17 +303,19 @@ account_abstraction:
   bundler:
     primary: { name: pimlico, endpoint_template: "https://api.pimlico.io/v2/{chain}/rpc" }
     fallback: { name: stackup_self_hosted, endpoint: "http://stackup:3000" }
+  # M-3 resolution: the factory is the source of truth. `AgentAccountFactory`
+  # derives each smart-account salt as `keccak256(abi.encodePacked(uint8(archetype), owner))`
+  # so the CREATE2 address is deterministic per (archetype, owner) pair. Do
+  # NOT rely on the archetype-only prefixes that earlier drafts of this doc
+  # listed — those never matched the on-chain factory. Enum ordering:
   archetype_to_smart_account:
-    - archetype: Speculator
-      factory_salt: "0x5370656375...0000"
-    - archetype: Arbitrageur
-      factory_salt: "0x41726269...0000"
-    - archetype: Sovereign
-      factory_salt: "0x536f7665...0000"
-    - archetype: MarketMaker
-      factory_salt: "0x4d61726b...0000"
-    - archetype: BlackSwan
-      factory_salt: "0x426c6163...0000"
+    salt_formula: "keccak256(abi.encodePacked(uint8(archetype), address(owner)))"
+    archetype_enum_order:
+      - { index: 0, archetype: Speculator }
+      - { index: 1, archetype: Arbitrageur }
+      - { index: 2, archetype: Sovereign }
+      - { index: 3, archetype: MarketMaker }
+      - { index: 4, archetype: BlackSwan }
 
 # ---------------------------------------------------------------------------
 # LAYER 3 — Decision-to-Action Bridge

@@ -3,44 +3,18 @@
 pragma solidity ^0.8.24;
 
 /// @title ILayerZeroOApp
-/// @notice Minimal LayerZero V2 OApp surface. Endpoint IDs (eid) for
-///         target chains come from spec/components.yaml::chains:
-///         Base=30184, Optimism=30111.
+/// @notice Thin event surface the DAES LayerZero V2 OApp exposes to off-chain
+///         indexers. peers() / setPeer() / PeerSet come from the upstream
+///         IOAppCore (LayerZero v2 OApp package) - duplicating them here
+///         would force an override with no behavioural change, so we don't.
+///
+///         Endpoint IDs (eid):
+///           Base mainnet  = 30184        OP mainnet  = 30111
+///           Base Sepolia  = 40245        OP Sepolia  = 40232
 interface ILayerZeroOApp {
-    struct MessagingParams {
-        uint32  dstEid;
-        bytes32 receiver;
-        bytes   message;
-        bytes   options;
-        bool    payInLzToken;
-    }
-
-    struct MessagingReceipt {
-        bytes32 guid;
-        uint64  nonce;
-        MessagingFee fee;
-    }
-
-    struct MessagingFee {
-        uint256 nativeFee;
-        uint256 lzTokenFee;
-    }
-
-    struct Origin {
-        uint32  srcEid;
-        bytes32 sender;
-        uint64  nonce;
-    }
-
+    /// @notice Emitted by DAESOApp when `sendMessage` succeeds.
     event MessageSent(bytes32 indexed guid, uint32 indexed dstEid, uint64 nonce);
+
+    /// @notice Emitted by DAESOApp on successful `_lzReceive` from a trusted peer.
     event MessageReceived(bytes32 indexed guid, uint32 indexed srcEid, bytes32 sender, uint64 nonce);
-
-    function endpoint() external view returns (address);
-    function peers(uint32 eid) external view returns (bytes32);
-    function setPeer(uint32 eid, bytes32 peer) external;
-
-    function quote(MessagingParams calldata params, address sender) external view returns (MessagingFee memory);
-    function send(MessagingParams calldata params, address refundAddress) external payable returns (MessagingReceipt memory);
-
-    function lzReceive(Origin calldata origin, bytes32 guid, bytes calldata message, address executor, bytes calldata extraData) external payable;
 }

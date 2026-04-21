@@ -18,8 +18,20 @@ interface ISwarmConsensusOracle {
     }
 
     event SwarmSignalPosted(bytes32 indexed signalHash, uint8 kind, uint16 quorumBps, int64 sigmaBandE6);
+    event PosterRotated(address oldPoster, address newPoster);
 
     function postSignal(bytes32 signalHash, uint8 kind, uint16 quorumBps, int64 sigmaBandE6) external;
     function getSignal(bytes32 signalHash) external view returns (Signal memory);
     function latestSignalHash() external view returns (bytes32);
+
+    /// @notice Expected ECDSA signer of off-chain attestations (the agent-swarm
+    ///         runtime's EOA). BridgeExecutor.validate compares recovered
+    ///         signers against this address.
+    function poster() external view returns (address);
+
+    /// @notice Rotate the poster EOA. Gated on `msg.sender == governor`, which
+    ///         only reaches this method through DAESGovernor's 3-of-5 +
+    ///         86400s staged-action pipeline. Addresses the single-key
+    ///         centralization risk noted in docs/audit-notes.md.
+    function rotatePoster(address newPoster) external;
 }

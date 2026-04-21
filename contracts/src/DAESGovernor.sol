@@ -2,16 +2,14 @@
 // contracts/src/DAESGovernor.sol
 pragma solidity ^0.8.24;
 
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../interfaces/IDAESGovernor.sol";
 
-/// @notice 3-of-5 multi-sig governor. Signer addresses are immutable and
-///         set at construction; one address per SignerRole slot.
-///         Execution requires:
-///           - 3 distinct signer bits in the signatureBitmap
-///           - 86400s elapsed since stageAction
-///         Execution is self-calling: only the governor executes,
-///         downstream contracts check `msg.sender == governor`.
-contract DAESGovernor is IDAESGovernor {
+/// @notice 3-of-5 multi-sig governor. Signers are mutable only via the
+///         self-gated `rotateSigner` path (stage → 3-of-5 sign → 86400s
+///         timelock → execute). Execution is self-calling: only the
+///         governor invokes; downstream contracts check `msg.sender == governor`.
+contract DAESGovernor is IDAESGovernor, ReentrancyGuard {
     uint8  public constant THRESHOLD = 3;
     uint32 public constant MIN_DELAY_S = 86400;
 
@@ -28,6 +26,8 @@ contract DAESGovernor is IDAESGovernor {
     error NotEnoughSigs();
     error TooEarly();
     error AlreadyTerminal();
+    error NotSelf();
+    error ZeroSigner();
 
     constructor(address[5] memory signers_, address bridgeOperator_) {
         signerOf = signers_;
@@ -67,7 +67,7 @@ contract DAESGovernor is IDAESGovernor {
         emit ActionSigned(actionId, role, msg.sender);
     }
 
-    function executeAction(bytes32 actionId) external returns (bytes memory) {
+    function executeAction(bytes32 actionId) external nonReentrant returns (bytes memory) {
         StagedAction storage a = _actions[actionId];
         if (a.stagedAt == 0) revert NotStaged();
         if (a.executed || a.rejected) revert AlreadyTerminal();
@@ -81,7 +81,7 @@ contract DAESGovernor is IDAESGovernor {
         return ret;
     }
 
-    function rejectAction(bytes32 actionId, string calldata reason) external {
+    function rejectAction(bytes32 actionId, string calldata reason) external nonReentrant {
         StagedAction storage a = _actions[actionId];
         if (a.stagedAt == 0) revert NotStaged();
         if (a.executed || a.rejected) revert AlreadyTerminal();
@@ -90,6 +90,18 @@ contract DAESGovernor is IDAESGovernor {
             && msg.sender != signerOf[uint8(SignerRole.DAOSnapshot)]) revert NotSigner();
         a.rejected = true;
         emit ActionRejected(actionId, reason);
+    }
+
+    /// @notice Rotate a signer slot. Must be reached via the governor's own
+    ///         stage/sign/execute pipeline — i.e. target = address(this) and
+    ///         data = rotateSigner(role, newSigner). That pipeline enforces
+    ///         3-of-5 quorum and the 86400s timelock on the rotation itself.
+    function rotateSigner(SignerRole role, address newSigner) external {
+        if (msg.sender != address(this)) revert NotSelf();
+        if (newSigner == address(0)) revert ZeroSigner();
+        address old = signerOf[uint8(role)];
+        signerOf[uint8(role)] = newSigner;
+        emit SignerRotated(role, old, newSigner);
     }
 
     function getAction(bytes32 actionId) external view returns (StagedAction memory) {

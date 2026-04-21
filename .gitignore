@@ -12,6 +12,10 @@ contracts/cache/
 contracts/artifacts/
 contracts/typechain-types/
 contracts/dist/
+# Foundry
+contracts/forge-out/
+contracts/forge-cache/
+contracts/lib/
 # Editor
 .vscode/
 .idea/

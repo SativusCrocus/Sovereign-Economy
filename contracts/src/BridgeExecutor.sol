@@ -2,6 +2,8 @@
 // contracts/src/BridgeExecutor.sol
 pragma solidity ^0.8.24;
 
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import "../interfaces/IBridgeExecutor.sol";
 import "../interfaces/ISwarmConsensusOracle.sol";
 import "./CircuitBreaker.sol";
@@ -24,6 +26,11 @@ contract BridgeExecutor is IBridgeExecutor {
     error NotGovernor();
     error Paused();
     error Unknown();
+
+    /// @notice Emitted when `validate` rejects an attestation (shape error or
+    ///         signer mismatch). The signalId is moved to REJECTED and a
+    ///         failure is recorded with the circuit breaker.
+    event AttestationRejected(bytes32 indexed signalId, bytes32 reason);
 
     constructor(
         ISwarmConsensusOracle oracle_,
@@ -58,20 +65,59 @@ contract BridgeExecutor is IBridgeExecutor {
         emit SignalReceived(signalId, kind, proofHash);
     }
 
+    /// @notice Validate a swarm-signal attestation.
+    ///
+    /// `quorumProof` layout (abi.encoded):
+    ///   (uint16 quorumBps, int64 sigmaBandE6, bytes signature)
+    ///
+    /// The signature must be an EIP-191 personal_sign by `oracle.poster()`
+    /// over `keccak256(abi.encodePacked(block.chainid, address(this),
+    /// signalId, quorumBps, sigmaBandE6))`. The leading chainid + executor
+    /// address are domain separators preventing cross-chain and cross-
+    /// bridge replay. Failed validation records an `OracleStale` failure
+    /// with the circuit breaker and transitions the signal to REJECTED.
     function validate(bytes32 signalId, bytes calldata quorumProof)
         external onlyOperator notPaused
     {
         _requireState(signalId, FSMState.SWARM_SIGNAL_RECEIVED);
-        // quorumProof is a signed attestation from the oracle; here we just
-        // ensure it's non-empty (full verification lives off-chain or in a
-        // dedicated verifier contract).
-        if (quorumProof.length == 0) {
+        (bool ok, bytes32 reason) = _verifyAttestation(signalId, quorumProof);
+        if (!ok) {
             breaker.recordFailure(ICircuitBreaker.FailureKind.OracleStale);
             _go(signalId, FSMState.REJECTED);
-            emit StateTransitioned(signalId, FSMState.SWARM_SIGNAL_RECEIVED, FSMState.REJECTED);
+            emit AttestationRejected(signalId, reason);
             return;
         }
         _go(signalId, FSMState.SIGNAL_VALIDATED);
+    }
+
+    function _verifyAttestation(bytes32 signalId, bytes calldata quorumProof)
+        private
+        view
+        returns (bool, bytes32)
+    {
+        if (quorumProof.length == 0) return (false, "empty-proof");
+
+        // Decode inside a try/catch-equivalent: abi.decode reverts on malformed
+        // input, but calldata arrived from the trusted operator — a malformed
+        // encoding is a bug, not an attack vector. If future callers are
+        // untrusted, replace with a hand-rolled length-check decoder.
+        (uint16 quorumBps, int64 sigmaBandE6, bytes memory sig) =
+            abi.decode(quorumProof, (uint16, int64, bytes));
+
+        bytes32 preimage = keccak256(
+            abi.encodePacked(
+                block.chainid,
+                address(this),
+                signalId,
+                quorumBps,
+                sigmaBandE6
+            )
+        );
+        bytes32 digest = MessageHashUtils.toEthSignedMessageHash(preimage);
+        (address recovered, ECDSA.RecoverError err, ) = ECDSA.tryRecover(digest, sig);
+        if (err != ECDSA.RecoverError.NoError) return (false, "bad-sig");
+        if (recovered != oracle.poster()) return (false, "wrong-signer");
+        return (true, bytes32(0));
     }
 
     function thresholdCheck(bytes32 signalId, uint16 quorumBps, int64 sigmaE6)

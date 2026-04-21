@@ -4,11 +4,11 @@ import { ethers } from "hardhat";
 
 describe("SwarmConsensusOracle", () => {
   async function deploy() {
-    const [poster, other] = await ethers.getSigners();
+    const [poster, governor, other, newPoster] = await ethers.getSigners();
     const O = await ethers.getContractFactory("SwarmConsensusOracle");
-    const oracle = await O.deploy(poster.address);
+    const oracle = await O.deploy(poster.address, governor.address);
     await oracle.waitForDeployment();
-    return { oracle, poster, other };
+    return { oracle, poster, governor, other, newPoster };
   }
 
   it("stores signals and updates latestSignalHash", async () => {
@@ -29,5 +29,23 @@ describe("SwarmConsensusOracle", () => {
     await expect(oracle.connect(poster).postSignal(h, 4 /*bad*/, 6700, 0)).to.be.revertedWithCustomError(oracle, "BadKind");
     await oracle.connect(poster).postSignal(h, 0, 6700, 0);
     await expect(oracle.connect(poster).postSignal(h, 0, 6700, 0)).to.be.revertedWithCustomError(oracle, "Duplicate");
+  });
+
+  it("Tier 4: rotatePoster is governor-only and emits PosterRotated", async () => {
+    const { oracle, poster, governor, other, newPoster } = await deploy();
+    await expect(oracle.connect(other).rotatePoster(newPoster.address))
+      .to.be.revertedWithCustomError(oracle, "NotGovernor");
+    await expect(oracle.connect(governor).rotatePoster(ethers.ZeroAddress))
+      .to.be.revertedWithCustomError(oracle, "ZeroPoster");
+    await expect(oracle.connect(governor).rotatePoster(newPoster.address))
+      .to.emit(oracle, "PosterRotated")
+      .withArgs(poster.address, newPoster.address);
+    expect(await oracle.poster()).to.equal(newPoster.address);
+
+    // After rotation the previous poster can no longer post.
+    const h = ethers.keccak256(ethers.toUtf8Bytes("after-rotate"));
+    await expect(oracle.connect(poster).postSignal(h, 0, 6700, 0))
+      .to.be.revertedWithCustomError(oracle, "NotPoster");
+    await oracle.connect(newPoster).postSignal(h, 0, 6700, 0);
   });
 });

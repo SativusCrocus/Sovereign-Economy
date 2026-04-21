@@ -1,0 +1,17 @@
+# config/grafana/provisioning/dashboards/daes.yml
+# Auto-imports every *.json under /var/lib/grafana/dashboards (mounted from
+# config/grafana/dashboards). Dashboards can be edited from the UI, but the
+# file-backed version wins on every Grafana restart (disableDeletion).
+apiVersion: 1
+
+providers:
+  - name: daes
+    orgId: 1
+    folder: DAES
+    type: file
+    disableDeletion: true
+    updateIntervalSeconds: 30
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: true

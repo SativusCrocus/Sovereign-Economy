@@ -1,0 +1,30 @@
+{
+  "chain": "Base Sepolia",
+  "chainId": 84532,
+  "lzEid": 40245,
+  "lzEndpoint": "0x6EDCE65403992e310A62460808c4b910D972f10f",
+  "peerEid": 40232,
+  "deployedAt": "2026-04-19T18:36:46.226Z",
+  "deployer": "0xF3BDfA90f0fFEec18cb99aBEBBD39A3B76ffB57B",
+  "contracts": {
+    "SwarmConsensusOracle": "0x2236CC5BE8a1d0Bf77CE6674Be95338C5860CE24",
+    "CircuitBreaker": "0x6898eC91224220913C3BB39BD249e6e6d0271c02",
+    "DAESGovernor": "0x6002f6697d254c7e3b2AB43C11787a9e50efAAAc",
+    "BridgeExecutor": "0x3c51bee21067a5BF95B1b6e3578dd361c1cE6c66",
+    "GuardianTimelock": "0xD83dCF7c1B85BFAd8B083954506c4488bCdEC366",
+    "AgentAccountFactory": "0x7D1B1f8F85d3C7d654cCb1Aee4a1f1e5d1Bd943F",
+    "DAESOApp": "0x92613892913C4671d2c53396d916dB3F027A9160"
+  },
+  "roles": {
+    "signers": [
+      "0xf132261364E69Ad3C43D5fFCDaA5cDc80fC2fE58",
+      "0xF4505d28c03DD59F5B41f76c2012760E20CDD5FB",
+      "0x4D722Ac166D4D34b307d741B79DcC9748fDb9931",
+      "0x535e00e62122118396fAb76aBBD954ce9837250F",
+      "0xea445DACdf66564adF18AA00a4f63a11dfB41E16"
+    ],
+    "bridgeOperator": "0xaA17e75f62679980CFD59fBD71AD5d8C3387dB67",
+    "poster": "0xe3E896C6D92B8e0425C06de2Ce0bAdFd06EABFeD",
+    "humanGuardian": "0x8DAcF1304809C683897CF1BdB8229BdE5a00BD95"
+  }
+}
