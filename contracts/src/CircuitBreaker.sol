@@ -11,7 +11,7 @@ import "../interfaces/ICircuitBreaker.sol";
 ///         `recordFailure` is gated to the BridgeExecutor — addresses
 ///         M-1 (ring-displacement attack by spamming failures).
 contract CircuitBreaker is ICircuitBreaker {
-    address public guardian;
+    address public immutable guardian;
     address public bridge;
 
     uint64[CB_FAILURE_THRESHOLD + 1] private _ring;
@@ -23,8 +23,10 @@ contract CircuitBreaker is ICircuitBreaker {
     error NotBridge();
     error BridgeAlreadySet();
     error ZeroBridge();
+    error ZeroGuardian();
 
     constructor(address guardian_) {
+        if (guardian_ == address(0)) revert ZeroGuardian();
         guardian = guardian_;
     }
 
@@ -59,9 +61,11 @@ contract CircuitBreaker is ICircuitBreaker {
 
     function failuresInWindow() public view returns (uint32) {
         uint64 threshold = uint64(block.timestamp) - CB_WINDOW_SECONDS;
-        uint32 n;
-        for (uint256 i = 0; i < _ring.length; i++) {
+        uint32 n = 0;
+        uint256 ringLen = _ring.length;
+        for (uint256 i = 0; i < ringLen; i++) {
             uint64 t = _ring[i];
+            // slither-disable-next-line timestamp
             if (t > threshold && t > lastReset) n++;
         }
         return n;

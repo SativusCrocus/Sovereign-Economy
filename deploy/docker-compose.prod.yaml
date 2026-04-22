@@ -1,0 +1,78 @@
+# deploy/docker-compose.prod.yaml
+# Production overlay: terminates TLS at a Caddy reverse proxy with automatic
+# Let's Encrypt (ACME HTTP-01 challenge). Replaces the self-signed dev cert
+# mounted into mcp-gateway by `deploy/tls/generate-cert.sh`.
+#
+# Requirements:
+#   1. Public DNS A/AAAA records for the two public hostnames below
+#      pointing at the host running this compose stack. Caddy will ACME-solve
+#      on port 80/443.
+#   2. Env vars in deploy/.env:
+#        DAES_PUBLIC_DOMAIN=daes.yourdomain.example         # mcp-gateway
+#        DAES_CONSOLE_DOMAIN=console.yourdomain.example     # frontend
+#        DAES_IPFS_DOMAIN=ipfs.yourdomain.example           # kubo HTTP gateway
+#        DAES_IPFS_USER=operator                            # basic_auth user
+#        DAES_IPFS_PASS_HASH='$2a$14$...'                   # caddy hash-password
+#        DAES_ACME_EMAIL=ops@yourdomain.example             # LE contact
+#   3. Ports 80 and 443 reachable from the public internet (no local NAT).
+#
+# Usage:
+#   docker compose -f deploy/docker-compose.yaml \
+#                  -f deploy/docker-compose.prod.yaml up -d --build
+#
+# What changes vs. dev:
+#   - mcp-gateway + frontend stop exposing host ports; Caddy proxies to them.
+#   - mcp-gateway keeps its internal cert mount for pod-to-pod TLS; clients
+#     entering via Caddy see a real Let's Encrypt cert.
+#   - NODE_TLS_REJECT_UNAUTHORIZED and NEXT_PUBLIC_MCP_ALLOW_SELF_SIGNED are
+#     unset (prod clients see real certs and can verify chains normally).
+#
+# For Kubernetes deployments, use cert-manager with a ClusterIssuer targeting
+# Let's Encrypt instead of this overlay. The Caddyfile ACME semantics are
+# equivalent.
+name: daes
+
+volumes:
+  caddy-data:
+  caddy-config:
+
+services:
+  caddy:
+    image: caddy:2.8.4-alpine
+    restart: unless-stopped
+    environment:
+      DAES_PUBLIC_DOMAIN:   ${DAES_PUBLIC_DOMAIN:?DAES_PUBLIC_DOMAIN required}
+      DAES_CONSOLE_DOMAIN:  ${DAES_CONSOLE_DOMAIN:?DAES_CONSOLE_DOMAIN required}
+      DAES_IPFS_DOMAIN:     ${DAES_IPFS_DOMAIN:?DAES_IPFS_DOMAIN required}
+      DAES_IPFS_USER:       ${DAES_IPFS_USER:?DAES_IPFS_USER required}
+      DAES_IPFS_PASS_HASH:  "${DAES_IPFS_PASS_HASH:?DAES_IPFS_PASS_HASH required - generate with: caddy hash-password}"
+      DAES_ACME_EMAIL:      ${DAES_ACME_EMAIL:?DAES_ACME_EMAIL required}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      mcp-gateway: { condition: service_healthy }
+      frontend:    { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:2019/config/"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    networks: [daes-net]
+
+  # Override: remove the public 8443 port on mcp-gateway; Caddy is now the
+  # only public TLS endpoint. Internal cert stays for pod-to-pod auth.
+  mcp-gateway:
+    ports: !reset []
+
+  # Override: frontend is only reachable through Caddy in prod.
+  frontend:
+    ports: !reset []
+    environment:
+      # Production clients verify real certs — drop the dev escape hatches.
+      NEXT_PUBLIC_MCP_ALLOW_SELF_SIGNED: "0"
+      NODE_TLS_REJECT_UNAUTHORIZED: "1"

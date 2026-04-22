@@ -108,7 +108,13 @@ services:
       WEAVIATE_API_KEY: ${WEAVIATE_API_KEY:?WEAVIATE_API_KEY required}
       MCP_GATEWAY_URL: https://mcp-gateway:8443
       DRAND_URL: https://api.drand.sh/public/latest
+      # Seed resolution:
+      #   Prod: set SEED_VRF_RPC + SEED_VRF_CONTRACT; the runtime reads
+      #         SwarmSeedVRF.latestSeed() on-chain. See contracts/src/SwarmSeedVRF.sol.
+      #   Dev:  leave them unset; the runtime falls back to the SEED env var.
       SEED: ${DAES_SEED:-0xDEADBEEF}
+      SEED_VRF_RPC: ${SEED_VRF_RPC:-}
+      SEED_VRF_CONTRACT: ${SEED_VRF_CONTRACT:-}
     volumes:
       - ../spec:/spec:ro
     depends_on:
@@ -311,11 +317,21 @@ services:
         limits: { cpus: "1.0", memory: 1G }
     networks: [daes-net]
 
+  # Private-swarm kubo. LIBP2P_FORCE_PNET=1 + the mounted swarm.key mean the
+  # daemon refuses to peer with any node that doesn't share the same key, so
+  # audit-log CIDs never land in the public IPFS DHT. Bootstrap order:
+  #   bash deploy/ipfs/generate-swarm-key.sh   # writes deploy/ipfs/swarm.key (gitignored)
+  #   docker compose -f deploy/docker-compose.yaml up -d
+  # If swarm.key does not exist the bind-mount fails loudly — that's the
+  # intended behavior (PNET without a key would silently join the public DHT).
   ipfs:
     image: ipfs/kubo:v0.30.0
     restart: unless-stopped
+    environment:
+      LIBP2P_FORCE_PNET: "1"
     volumes:
       - ipfs-data:/data/ipfs
+      - ./ipfs/swarm.key:/data/ipfs/swarm.key:ro
     healthcheck:
       test: ["CMD", "ipfs", "id"]
       interval: 15s

@@ -3,11 +3,9 @@
 pragma solidity ^0.8.24;
 
 import {
-    ILayerZeroEndpointV2,
     MessagingParams,
     MessagingFee,
-    MessagingReceipt,
-    Origin
+    MessagingReceipt
 } from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
 
 /// @notice Unit-test-only stand-in for `ILayerZeroEndpointV2`.

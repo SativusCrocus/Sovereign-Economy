@@ -26,6 +26,7 @@ contract BridgeExecutor is IBridgeExecutor {
     error NotGovernor();
     error Paused();
     error Unknown();
+    error ZeroAddress();
 
     /// @notice Emitted when `validate` rejects an attestation (shape error or
     ///         signer mismatch). The signalId is moved to REJECTED and a
@@ -38,6 +39,10 @@ contract BridgeExecutor is IBridgeExecutor {
         address governor_,
         address operator_
     ) {
+        if (address(oracle_) == address(0)) revert ZeroAddress();
+        if (address(breaker_) == address(0)) revert ZeroAddress();
+        if (governor_ == address(0)) revert ZeroAddress();
+        if (operator_ == address(0)) revert ZeroAddress();
         oracle   = oracle_;
         breaker  = breaker_;
         governor = governor_;
@@ -82,9 +87,10 @@ contract BridgeExecutor is IBridgeExecutor {
         _requireState(signalId, FSMState.SWARM_SIGNAL_RECEIVED);
         (bool ok, bytes32 reason) = _verifyAttestation(signalId, quorumProof);
         if (!ok) {
-            breaker.recordFailure(ICircuitBreaker.FailureKind.OracleStale);
+            // Checks-Effects-Interactions: state + event first, external call last.
             _go(signalId, FSMState.REJECTED);
             emit AttestationRejected(signalId, reason);
+            breaker.recordFailure(ICircuitBreaker.FailureKind.OracleStale);
             return;
         }
         _go(signalId, FSMState.SIGNAL_VALIDATED);
@@ -114,6 +120,7 @@ contract BridgeExecutor is IBridgeExecutor {
             )
         );
         bytes32 digest = MessageHashUtils.toEthSignedMessageHash(preimage);
+        // slither-disable-next-line unused-return
         (address recovered, ECDSA.RecoverError err, ) = ECDSA.tryRecover(digest, sig);
         if (err != ECDSA.RecoverError.NoError) return (false, "bad-sig");
         if (recovered != oracle.poster()) return (false, "wrong-signer");
@@ -138,6 +145,7 @@ contract BridgeExecutor is IBridgeExecutor {
     function timeout(bytes32 signalId) external notPaused {
         _requireState(signalId, FSMState.MULTI_SIG_STAGED);
         uint64 elapsed = uint64(block.timestamp) - _enteredAt[signalId];
+        // slither-disable-next-line timestamp
         if (elapsed < BRIDGE_GUARDIAN_TIMEOUT_S) revert BadTransition(FSMState.MULTI_SIG_STAGED, FSMState.GUARDIAN_TIMEOUT);
         _go(signalId, FSMState.GUARDIAN_TIMEOUT);
         emit TimeoutTriggered(signalId, elapsed);

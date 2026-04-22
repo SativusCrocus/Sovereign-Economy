@@ -194,8 +194,8 @@ Sovereign Economy/
 
 The dev compose is deliberately permissive. For prod:
 
-1. Replace self-signed TLS with cert-manager / Let's Encrypt.
-2. Switch `WEAVIATE_API_KEY`, `MCP_JWT_SECRET`, and `AGENT_KEY_*` to a secrets manager (Vault, Doppler, Akash SealedSecrets) or better, an HSM.
+1. Replace self-signed TLS with a real cert. For docker compose, overlay [`deploy/docker-compose.prod.yaml`](deploy/docker-compose.prod.yaml) (Caddy + ACME Let's Encrypt; set `DAES_PUBLIC_DOMAIN`, `DAES_CONSOLE_DOMAIN`, `DAES_ACME_EMAIL`). For Kubernetes, use cert-manager with a Let's Encrypt `ClusterIssuer`. For Akash, providers terminate external TLS at their ingress.
+2. Switch `WEAVIATE_API_KEY`, `MCP_JWT_SECRET`, and `AGENT_KEY_*` to a secrets manager (Vault, Doppler, Akash SealedSecrets) or better, an HSM. Full inventory and migration plan in [docs/secrets-hardening.md](docs/secrets-hardening.md); reference compose overlay at [deploy/docker-compose.secrets.yaml](deploy/docker-compose.secrets.yaml).
 3. Rotate the swarm seed from Chainlink VRF on-chain (not env-var `SEED`).
 4. [services/mcp-gateway/app/handlers/wallet_sign.py](services/mcp-gateway/app/handlers/wallet_sign.py) uses real secp256k1 via eth-account; provision distinct `AGENT_KEY_<ARCHETYPE>` keys via HSM in prod. Configure `PIMLICO_API_KEY` for bundler submission; `TENDERLY_URL` for simulation.
 5. Run the full audit checklist in [docs/audit-notes.md](docs/audit-notes.md) — at minimum, fix the **H-1/H-2/H-3** findings before mainnet, and commission a third-party audit (Trail of Bits / OpenZeppelin / Spearbit).

@@ -19,12 +19,12 @@ flowchart TB
         CL["Chainlink price feeds"]:::ext
         UC["UN Comtrade"]:::ext
         AIS["AIS ship telemetry"]:::ext
-        EMB["Embedder: text-embedding-3-large (3072)\\nFallback: BGE-large + linear proj"]:::svc
-        WV["Weaviate 1.24 (Qdrant fallback)\\nNodes: MarketActor|Commodity|TradeRoute|RegulatorEvent\\nEdges: TRANSACTS|COMPETES|REGULATES|DISRUPTS"]:::svc
+        EMB["Embedder: text-embedding-3-large (3072)<br/>Fallback: BGE-large + linear proj"]:::svc
+        WV["Weaviate 1.24 (Qdrant fallback)<br/>Nodes: MarketActor|Commodity|TradeRoute|RegulatorEvent<br/>Edges: TRANSACTS|COMPETES|REGULATES|DISRUPTS"]:::svc
         RET["Retrieval: top-k=20, MMR λ=0.5, cos≥0.72"]:::svc
-        POP["Agent pool (N=1000)\\nSpec 20% / Arb 25% / Sov 10% / MM 30% / BS 15%\\nFSM: OBSERVE→REASON→SIGNAL→WAIT\\nCobb-Douglas, memory=48 ticks, β∈[0.1,4.2] lognormal"]:::svc
-        CON["Consensus gate\\n≥67% agents within ±1.5σ of median"]:::safety
-        SIG["SwarmSignal\\n{BUY|SELL|HOLD|ESCALATE_TO_GUARDIAN}"]:::svc
+        POP["Agent pool (N=1000)<br/>Spec 20% / Arb 25% / Sov 10% / MM 30% / BS 15%<br/>FSM: OBSERVE→REASON→SIGNAL→WAIT<br/>Cobb-Douglas, memory=48 ticks, β∈[0.1,4.2] lognormal"]:::svc
+        CON["Consensus gate<br/>≥67% agents within ±1.5σ of median"]:::safety
+        SIG["SwarmSignal<br/>{BUY|SELL|HOLD|ESCALATE_TO_GUARDIAN}"]:::svc
     end
     WB & CL & UC & AIS --> EMB --> WV --> RET --> POP --> CON --> SIG
 
@@ -50,10 +50,10 @@ flowchart TB
     %% ---------- LAYER 3 ----------
     subgraph L3["Layer 3 — Decision-to-Action Bridge"]
         direction TB
-        BR["BridgeExecutor FSM\\n(see state diagram below)"]:::safety
-        MS["3-of-5 multi-sig\\n[AgentA, AgentB, HumanGuardian, TimeLock(86400s), DAO Snapshot]"]:::safety
+        BR["BridgeExecutor FSM<br/>(see state diagram below)"]:::safety
+        MS["3-of-5 multi-sig<br/>[AgentA, AgentB, HumanGuardian, TimeLock(86400s), DAO Snapshot]"]:::safety
         TL["GuardianTimelock (86400s)"]:::safety
-        CB["CircuitBreaker\\n>2 failures / 10 min ⇒ auto-pause"]:::safety
+        CB["CircuitBreaker<br/>>2 failures / 10 min ⇒ auto-pause"]:::safety
     end
     SA_SPEC & SA_ARB & SA_SOV & SA_MM & SA_BS --> BR --> MS --> TL --> CB
 
@@ -61,10 +61,10 @@ flowchart TB
     subgraph L4["Layer 4 — Deployment Infrastructure"]
         direction TB
         COMPOSE["docker-compose (6 services, isolated 'daes-net')"]:::svc
-        AK["Akash SDL\\n(GPU-tier filter a10/a100, count≥2 for SPOF-critical)"]:::svc
+        AK["Akash SDL<br/>(GPU-tier filter a10/a100, count≥2 for SPOF-critical)"]:::svc
         PROM["Prometheus + Grafana"]:::svc
         IPFS["IPFS / Filecoin audit sink"]:::ext
-        CHAIN["Base (8453) + Optimism (10)\\nLayerZero V2 OApp"]:::chain
+        CHAIN["Base (8453) + Optimism (10)<br/>LayerZero V2 OApp"]:::chain
     end
     CB -->|execute| CHAIN
     T5 --> IPFS
@@ -88,7 +88,7 @@ stateDiagram-v2
     THRESHOLD_CHECK --> MULTI_SIG_STAGED: quorum ≥ 67% && within ±1.5σ
     THRESHOLD_CHECK --> REJECTED: quorum_insufficient
 
-    MULTI_SIG_STAGED --> EXECUTED: 3-of-5 signatures collected\n(and 86400s timelock satisfied)
+    MULTI_SIG_STAGED --> EXECUTED: 3-of-5 signatures collected<br/>(and 86400s timelock satisfied)
     MULTI_SIG_STAGED --> GUARDIAN_TIMEOUT: elapsed > 3600s
 
     GUARDIAN_TIMEOUT --> MULTI_SIG_STAGED: guardian override valid

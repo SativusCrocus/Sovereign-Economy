@@ -13,7 +13,10 @@ contract AgentAccountFactory {
 
     event AccountCreated(address account, IAgentAccount.Archetype archetype, address owner);
 
+    error ZeroAddress();
+
     constructor(address entryPoint_) {
+        if (entryPoint_ == address(0)) revert ZeroAddress();
         entryPoint = entryPoint_;
     }
 

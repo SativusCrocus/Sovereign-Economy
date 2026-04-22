@@ -16,9 +16,10 @@ import uvicorn
 from .determinism import seeded_rng
 from .agents import build_population
 from .consensus import consensus_loop
+from .seed_source import resolve_seed
 
 SPEC_PATH = os.environ.get("DAES_SPEC_PATH", "/spec/components.yaml")
-SEED      = int(os.environ.get("SEED", "0xDEADBEEF"), 16)
+SEED      = resolve_seed()
 
 log = logging.getLogger("daes.swarm")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")

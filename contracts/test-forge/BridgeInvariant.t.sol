@@ -243,6 +243,81 @@ contract BridgeHandler is Test {
     function tryRecordFailureAsOutsider() external {
         cb.recordFailure(ICircuitBreaker.FailureKind.OracleStale);
     }
+
+    /// Pause the breaker *after* the signatures are collected but *before*
+    /// executeAction fires. Exercises the narrow window where 3-of-5 + 86400s
+    /// already hold, so the only thing standing between the attacker and
+    /// EXECUTED is the `notPaused` modifier on BridgeExecutor.markExecuted.
+    function latePauseAttempt(uint256 seed) external {
+        bytes32 signalId = keccak256(abi.encode("sig", seed));
+        _touch(signalId);
+        if (cb.isPaused()) return;
+        if (be.stateOf(signalId) != IBridgeExecutor.FSMState.IDLE) return;
+
+        // Walk the signal through the FSM up to MULTI_SIG_STAGED via the legal
+        // route, so all FSM preconditions of markExecuted are already met.
+        vm.prank(bridgeOp);
+        try be.onSwarmSignal(signalId, IBridgeExecutor.SignalKind.BUY, bytes32(0)) {} catch {
+            return;
+        }
+
+        uint16 quorumBps = 6700;
+        int64 sigmaE6 = 1_200_000;
+        bytes32 preimage = keccak256(
+            abi.encodePacked(block.chainid, address(be), signalId, quorumBps, sigmaE6)
+        );
+        bytes32 digest = MessageHashUtils.toEthSignedMessageHash(preimage);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(posterPk, digest);
+        bytes memory proof = abi.encode(quorumBps, sigmaE6, abi.encodePacked(r, s, v));
+
+        vm.prank(bridgeOp);
+        try be.validate(signalId, proof) {} catch { return; }
+        vm.prank(bridgeOp);
+        try be.thresholdCheck(signalId, quorumBps, sigmaE6) {} catch { return; }
+        vm.prank(bridgeOp);
+        try be.stageForMultiSig(signalId, bytes32(0)) {} catch { return; }
+
+        bytes32 actionId = keccak256(abi.encode("markExecuted", signalId));
+        bytes memory callData = abi.encodeWithSelector(be.markExecuted.selector, signalId);
+        vm.prank(bridgeOp);
+        try gov.stageAction(actionId, address(be), 0, callData) {} catch { return; }
+        for (uint8 i = 0; i < 3; i++) {
+            vm.prank(vm.addr(signerPks[i]));
+            try gov.signAction(actionId, IDAESGovernor.SignerRole(i), "") {} catch { return; }
+        }
+        vm.warp(block.timestamp + 86_401);
+
+        // THE ATTACK: trip the breaker right before executing. Legal preconditions
+        // (3 sigs, elapsed timelock) are intact; only `!isPaused` should block us.
+        for (uint8 i = 0; i < 4; i++) {
+            vm.prank(address(be));
+            cb.recordFailure(ICircuitBreaker.FailureKind.OracleStale);
+        }
+        require(cb.isPaused(), "late-pause setup failed");
+        gov.executeAction(actionId); // bubbles up Paused() from markExecuted → whole tx reverts
+    }
+
+    /// Double-execute: after a legal execution, try to execute the same action
+    /// again. Should revert AlreadyTerminal.
+    function doubleExecute(uint256 seed) external {
+        bytes32 signalId = keccak256(abi.encode("sig", seed));
+        if (be.stateOf(signalId) != IBridgeExecutor.FSMState.EXECUTED) return;
+        bytes32 actionId = keccak256(abi.encode("markExecuted", signalId));
+        gov.executeAction(actionId);
+    }
+
+    /// Reject-then-try-to-execute: mark a mid-FSM signal REJECTED via a
+    /// governor-authorised markRejected call, then try to drive it to EXECUTED.
+    function rejectThenExecute(uint256 seed) external {
+        bytes32 signalId = keccak256(abi.encode("sig", seed));
+        _touch(signalId);
+        vm.prank(address(gov));
+        try be.markRejected(signalId, "manual") {} catch { return; }
+        // Now try markExecuted — REJECTED is not an accepted source state,
+        // so this must revert with BadTransition.
+        vm.prank(address(gov));
+        be.markExecuted(signalId);
+    }
 }
 
 /// @notice Invariant: `be.stateOf(id) == EXECUTED` for any signalId implies the
@@ -284,6 +359,30 @@ contract BridgeInvariantTest is StdInvariant, Test {
             if (be.stateOf(id) == IBridgeExecutor.FSMState.EXECUTED) {
                 require(handler.fullyLegal(id), "EXECUTED without 3-of-5 && 86400s && !isPaused");
             }
+        }
+    }
+
+    /// Direct on-chain witness: for every EXECUTED signalId, read the governor's
+    /// StagedAction and assert the three gating preconditions held simultaneously
+    /// at execution time. This is independent of the handler's `fullyLegal`
+    /// tracking — so even if the handler had a bug, this invariant still catches
+    /// a 3-of-5 or 86400s bypass.
+    function invariant_executedHas3SigsAnd86400s() public view {
+        uint256 n = handler.seenCount();
+        for (uint256 i = 0; i < n; i++) {
+            bytes32 id = handler.seenAt(i);
+            if (be.stateOf(id) != IBridgeExecutor.FSMState.EXECUTED) continue;
+            bytes32 actionId = keccak256(abi.encode("markExecuted", id));
+            IDAESGovernor.StagedAction memory a = gov.getAction(actionId);
+            require(a.executed, "EXECUTED without executed action");
+            require(_popcount(a.signatureBitmap) >= 3, "EXECUTED with <3 sigs");
+            require(block.timestamp >= uint256(a.stagedAt) + 86400, "EXECUTED before 86400s elapsed");
+        }
+    }
+
+    function _popcount(uint8 x) private pure returns (uint8 c) {
+        unchecked {
+            for (; x != 0; x >>= 1) c += x & 1;
         }
     }
 }

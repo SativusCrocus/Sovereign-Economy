@@ -1,0 +1,28 @@
+# contracts/echidna.yaml
+# Echidna config for the DAES bridge safety invariant.
+#
+# Usage:
+#   cd contracts
+#   echidna test-echidna/EchidnaBridge.sol --contract EchidnaBridge --config echidna.yaml
+#
+# Long runs:
+#   timeout 14400 echidna ... --config echidna.yaml  # 4 hours
+#
+# The harness deploys its own components; we only need to tell Echidna which
+# target contract to instantiate and how long to fuzz for.
+
+testMode: property
+testLimit: 200000           # Smoke-test budget; bump to 10_000_000 for a long run.
+seqLen: 120                 # Max call-sequence length per test case.
+shrinkLimit: 5000           # Reasonable shrinking budget when a counterexample is found.
+coverage: true
+corpusDir: echidna-corpus   # Cached corpus between runs — delete to start fresh.
+
+# Keep deployment + senders simple; the harness pranks the right actors itself.
+deployer: "0x00a329c0648769a73afac7f9381e08fb43dbea72"
+sender: ["0x00a329c0648769a73afac7f9381e08fb43dbea72"]
+
+# Crytic-compile build config. Echidna re-uses the Foundry profile because
+# test-echidna/** isn't in Foundry's src= or test= trees but compiles fine
+# with the default remappings.
+cryticArgs: ["--foundry-out-directory", "forge-out", "--compile-force-framework", "foundry"]

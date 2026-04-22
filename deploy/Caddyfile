@@ -1,0 +1,68 @@
+# deploy/Caddyfile
+# Caddy 2.x config for DAES production TLS termination.
+#
+# Serves two public endpoints:
+#   https://${DAES_PUBLIC_DOMAIN}   → mcp-gateway:8443  (HTTPS upstream, internal cert)
+#   https://${DAES_CONSOLE_DOMAIN}  → frontend:3001     (HTTP upstream)
+#
+# Certificates are obtained via Let's Encrypt ACME HTTP-01. Renewed
+# automatically 30 days before expiry. State persists in the `caddy-data`
+# volume so restarts don't re-issue.
+#
+# Admin API is bound to localhost only (default); health probe uses it.
+
+{
+    email {env.DAES_ACME_EMAIL}
+    admin :2019
+    # Uncomment to use Let's Encrypt staging while testing:
+    # acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
+}
+
+# MCP gateway — external clients terminate here, Caddy proxies over the
+# internal daes-net to mcp-gateway's self-signed 8443. `tls_insecure_skip_verify`
+# is acceptable for this hop because (a) the upstream is on an isolated docker
+# network, (b) it's the same deployment boundary, (c) the internal cert is
+# pinned by mount rather than served via an untrusted CA path.
+{env.DAES_PUBLIC_DOMAIN} {
+    encode zstd gzip
+    reverse_proxy https://mcp-gateway:8443 {
+        transport http {
+            tls
+            tls_insecure_skip_verify
+        }
+    }
+    log {
+        output stdout
+        format json
+    }
+}
+
+# Operator console.
+{env.DAES_CONSOLE_DOMAIN} {
+    encode zstd gzip
+    reverse_proxy http://frontend:3001
+    log {
+        output stdout
+        format json
+    }
+}
+
+# IPFS HTTP read-only gateway. Private swarm (LIBP2P_FORCE_PNET=1 + swarm.key)
+# keeps content off the public DHT; basic_auth adds a second gate on the
+# public HTTP surface so CIDs can only be fetched by operators who hold the
+# credentials. The kubo API (:5001) is NEVER exposed through Caddy — it has
+# pin/add privileges and must stay on the internal daes-net only.
+#
+# Credential rotation: regenerate the bcrypt hash with `caddy hash-password`
+# and update DAES_IPFS_PASS_HASH in deploy/.env. Restart caddy to pick it up.
+{env.DAES_IPFS_DOMAIN} {
+    basic_auth {
+        {env.DAES_IPFS_USER} {env.DAES_IPFS_PASS_HASH}
+    }
+    encode zstd gzip
+    reverse_proxy http://ipfs:8080
+    log {
+        output stdout
+        format json
+    }
+}

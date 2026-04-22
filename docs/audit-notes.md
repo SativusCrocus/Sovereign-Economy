@@ -40,8 +40,8 @@ Multi-chain deployments (Base + Optimism) emit identical event signatures. Index
 **L-2. No explicit upgrade path.**
 Interfaces don't require upgradeability. If you later want to move to UUPS or Transparent Proxy, the current implementations are not storage-compatible. Decide up front whether upgradeability is in-scope; if not, that's a deliberate choice to document.
 
-**L-3. `AgentAccount.executeBatch` uses `require` with a string reason.**
-Gas-wise, convert to a custom error (`error LengthMismatch();`). Minor.
+**L-3. [RESOLVED] `AgentAccount.executeBatch` uses `require` with a string reason.**
+Replaced with `error LengthMismatch()` on the length check, and inner-target failures now bubble up via `_bubbleRevert` (assembly revert preserving the callee's revert data) instead of re-wrapping in `require(ok, _revertReason(ret))`. `execute` was converted in the same pass for consistency.
 
 **L-4. `SwarmConsensusOracle` stores `posterAgentRuntime = msg.sender`, but only a single `poster` can ever call.**
 Field is always equal to `poster`. Either drop it or allow a set of runtime addresses (and record which one posted).
@@ -61,10 +61,29 @@ Field is always equal to `poster`. Either drop it or allow a set of runtime addr
 Beyond this self-review:
 
 - Gas-griefing surface on the bundler path (EntryPoint v0.7 `validateUserOp` rules).
-- **[PARTIALLY RESOLVED]** Cross-chain replay between Base and Optimism — `BridgeExecutor.validate` now includes `block.chainid` and `address(this)` in the attestation preimage. Any new signed surfaces in the OApp's message payloads still need audit attention.
-- **[PARTIALLY RESOLVED]** Centralization risk around `SwarmConsensusOracle.poster` — one key posts all signals. Rotation is now governor-gated (`rotatePoster`, gated on `msg.sender == governor` so it flows through the same 3-of-5 + 86400s pipeline), which limits blast radius but does not make the quorum multi-party. Threshold ECDSA / BLS over k-of-n posters is the proper long-term fix.
+- **[RESOLVED]** Cross-chain replay between Base and Optimism. All current signed preimages in the repo include `block.chainid`:
+  - `BridgeExecutor._verifyAttestation` — `keccak256(block.chainid ‖ address(this) ‖ signalId ‖ quorumBps ‖ sigmaBandE6)`, tested by `rejects attestation signed over a different chainId`.
+  - `AgentAccount.validateUserOp` — consumes the EntryPoint v0.7 `userOpHash`, which is defined as `keccak256(keccak256(packedUserOp) ‖ entryPoint ‖ chainid)`.
+  - `services/mcp-gateway/app/handlers/wallet_sign.py::user_op_hash` — mirrors the on-chain definition, packing `chain_id.to_bytes(32, "big")` into the outer hash.
+  - `DAESOApp` does **not** sign or verify application-level payloads today; it is a pure `_lzSend` / `_lzReceive` relay. **Forward guardrail:** any future payload-level signing over OApp `message` bytes must include `block.chainid` in the preimage.
+- **[DECISION — accepted risk, M1]** Centralization risk around `SwarmConsensusOracle.poster`. One key posts all signals and signs all BridgeExecutor attestations. Three options were considered:
+  - **A. Multi-poster allowlist (any-of-N).** *Rejected.* This is a security regression: the weakest key in the set determines the security of the whole attestation surface, because each allowlisted key is independently sufficient.
+  - **B. Single poster + documented risk acceptance + governor-gated rotation.** *Chosen for M1.* Rotation flows through `DAESGovernor.rotatePoster` (3-of-5 + 86400s). Compromise response: `rejectAction` blocks the staged signal, `rotatePoster` swaps the key, `CircuitBreaker.setBridge` is one-time only so the attacker can't rewire the failure path.
+  - **C. Threshold ECDSA or BLS k-of-N signing.** *Correct long-term answer, out of scope for M1.* Needs a threshold-sig library and coordinated off-chain signer software; tracked for a later milestone.
+  - **Residual risk under option B:** a compromised poster can inject false signals and sign matching attestations, driving them to `MULTI_SIG_STAGED`. The 3-of-5 + 86400s governor gate is the primary defense — human signers are expected to `rejectAction` bogus stages during the timelock window.
 - Economic attacks: an attacker who controls 33% of the swarm agents could push quorum to exactly 67% and attempt adversarial signals. See the `BlackSwan` archetype share (15%) and budget for this in the staking/slashing layer that is out of current scope.
 - Formal verification of the Bridge FSM: the empirical property `never EXECUTED without 3-of-5 && 86400s elapsed && !isPaused` is now fuzzed by [contracts/test-forge/BridgeInvariant.t.sol](../contracts/test-forge/BridgeInvariant.t.sol) (64 × 64 Foundry invariant runs). A deductive proof (Certora or Halmos) is still out of scope.
+
+## Swarm seed
+
+- **[RESOLVED path, wiring pending]** Swarm seed source moved from `SEED` env var to on-chain `SwarmSeedVRF.latestSeed()`. The contract draws randomness from Chainlink VRF v2.5; rotation is `onlyGovernor`, so a fresh seed requires the 3-of-5 + 86400s pipeline. The runtime (`services/agent-swarm-runtime/src/seed_source.py`) resolves the seed by calling `latestSeed()` via `eth_call` when `SEED_VRF_RPC` + `SEED_VRF_CONTRACT` are set, and falls back to the `SEED` env var otherwise. Production bring-up: deploy the contract, seed a VRF subscription, run one `requestSeed` flow through the governor, wait for fulfilment, then set the two env vars and restart the swarm. Unit tests live in [contracts/test/SwarmSeedVRF.test.ts](../contracts/test/SwarmSeedVRF.test.ts).
+
+## IPFS audit log
+
+- **[RESOLVED]** The audit-log pin store must not leak to the public IPFS DHT. Two independent gates now enforce that:
+  1. **Private libp2p swarm.** `deploy/docker-compose.yaml` runs kubo with `LIBP2P_FORCE_PNET=1` and mounts `deploy/ipfs/swarm.key` (gitignored) into `/data/ipfs/swarm.key`. libp2p rejects any peer that doesn't present the same pre-shared key, so bootstrap peers, DHT clients, and public gateways cannot connect. Key generation: `bash deploy/ipfs/generate-swarm-key.sh`; rotation is non-graceful — every private-swarm peer must be updated at the same time.
+  2. **Authenticated public HTTP gateway.** The kubo API (`:5001`, pin/add privileges) stays on the internal `daes-net` and is never routed through Caddy. The read-only HTTP gateway (`:8080`) is fronted by `{env.DAES_IPFS_DOMAIN}` in [deploy/Caddyfile](../deploy/Caddyfile) with `basic_auth` — only operators who hold `DAES_IPFS_USER` + `DAES_IPFS_PASS_HASH` can resolve CIDs from outside the swarm. Hash is generated with `caddy hash-password` and stored in `deploy/.env` (gitignored), not committed.
+- **Residual risk.** A compromised private-swarm peer can exfiltrate any pinned CID. Mitigate by: (a) treating peer hosts as Tier 1 secrets (same handling as the signer HSMs — see [secrets-hardening.md](secrets-hardening.md)), and (b) rotating the swarm key after any peer decommission. Content-level encryption of audit-log payloads before pinning is tracked as forward work; today the private swarm + basic-auth combination is the line of defense.
 
 ## Tooling checklist before commissioning an audit
 

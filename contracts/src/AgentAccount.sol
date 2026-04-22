@@ -16,13 +16,17 @@ import "../interfaces/IAgentAccount.sol";
 contract AgentAccount is IAgentAccount {
     address public immutable entryPoint;
     Archetype public immutable _archetype;
-    address public owner;
+    address public immutable owner;
     uint256 public nonce;
 
     error NotEntryPoint();
     error NotEntryPointOrSelf();
+    error ZeroAddress();
+    error LengthMismatch();
 
     constructor(address entryPoint_, Archetype archetype_, address owner_) {
+        if (entryPoint_ == address(0)) revert ZeroAddress();
+        if (owner_ == address(0)) revert ZeroAddress();
         entryPoint = entryPoint_;
         _archetype = archetype_;
         owner      = owner_;
@@ -51,6 +55,7 @@ contract AgentAccount is IAgentAccount {
         // (upper-half secp256k1n) and malformed signatures. Failure returns
         // SIG_VALIDATION_FAILED (=1) rather than reverting, per 4337 v0.7.
         bytes32 digest = MessageHashUtils.toEthSignedMessageHash(userOpHash);
+        // slither-disable-next-line unused-return
         (address recovered, ECDSA.RecoverError err, ) = ECDSA.tryRecover(digest, userOp.signature);
         validationData = (err == ECDSA.RecoverError.NoError && recovered == owner) ? 0 : 1;
         nonce = userOp.nonce;
@@ -65,27 +70,34 @@ contract AgentAccount is IAgentAccount {
     function execute(address target, uint256 value, bytes calldata data)
         external onlyEntryPointOrSelf
     {
+        // Zero target is intentionally allowed: owner has already authorised via validateUserOp.
+        // slither-disable-next-line missing-zero-check,reentrancy-events
         (bool ok, bytes memory ret) = target.call{value: value}(data);
-        require(ok, _revertReason(ret));
+        if (!ok) _bubbleRevert(ret);
         emit Executed(target, value, data);
     }
 
     function executeBatch(address[] calldata targets, uint256[] calldata values, bytes[] calldata datas)
         external onlyEntryPointOrSelf
     {
-        require(targets.length == values.length && values.length == datas.length, "len");
-        for (uint256 i = 0; i < targets.length; ++i) {
+        if (targets.length != values.length || values.length != datas.length) revert LengthMismatch();
+        uint256 n = targets.length;
+        for (uint256 i = 0; i < n; ++i) {
+            // slither-disable-next-line calls-loop,reentrancy-events
             (bool ok, bytes memory ret) = targets[i].call{value: values[i]}(datas[i]);
-            require(ok, _revertReason(ret));
+            if (!ok) _bubbleRevert(ret);
             emit Executed(targets[i], values[i], datas[i]);
         }
     }
 
     receive() external payable {}
 
-    function _revertReason(bytes memory ret) private pure returns (string memory) {
-        if (ret.length < 68) return "call reverted";
-        assembly { ret := add(ret, 0x04) }
-        return abi.decode(ret, (string));
+    /// @dev Bubble up inner revert data verbatim. If `ret` is empty (target
+    ///      reverted without a reason), we still revert — the empty-data
+    ///      revert preserves the failure signal without guessing a message.
+    function _bubbleRevert(bytes memory ret) private pure {
+        assembly {
+            revert(add(ret, 0x20), mload(ret))
+        }
     }
 }

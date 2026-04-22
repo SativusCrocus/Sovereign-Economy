@@ -2,6 +2,8 @@
 deploy/.env
 deploy/tls/*.key
 deploy/tls/*.crt
+deploy/secrets/
+deploy/ipfs/swarm.key
 # Node / Python
 node_modules/
 __pycache__/
@@ -17,6 +19,9 @@ contracts/dist/
 contracts/forge-out/
 contracts/forge-cache/
 contracts/lib/
+# Echidna
+contracts/echidna-corpus/
+contracts/crytic-export/
 # Editor
 .vscode/
 .idea/

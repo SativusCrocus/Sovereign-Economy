@@ -22,9 +22,11 @@ contract SwarmConsensusOracle is ISwarmConsensusOracle {
     error BadKind();
     error Duplicate();
     error ZeroPoster();
+    error ZeroGovernor();
 
     constructor(address poster_, address governor_) {
-        require(poster_ != address(0) && governor_ != address(0), "zero addr");
+        if (poster_ == address(0)) revert ZeroPoster();
+        if (governor_ == address(0)) revert ZeroGovernor();
         poster = poster_;
         governor = governor_;
     }
@@ -37,6 +39,7 @@ contract SwarmConsensusOracle is ISwarmConsensusOracle {
     ) external {
         if (msg.sender != poster) revert NotPoster();
         if (kind > 3) revert BadKind();
+        // slither-disable-next-line timestamp
         if (_store[signalHash].postedAt != 0) revert Duplicate();
 
         _store[signalHash] = Signal({

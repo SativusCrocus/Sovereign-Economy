@@ -91,8 +91,8 @@ describe("DAESGovernor", () => {
     await g.connect(s2).signAction(actionId, 1, "0x");
     await g.connect(s3).signAction(actionId, 2, "0x");
     await time.increase(86401);
-    // executeAction's low-level call bubbles up as "call failed" because
-    // rotateSigner reverts with ZeroSigner inside the self-call.
-    await expect(g.executeAction(actionId)).to.be.revertedWith("call failed");
+    // executeAction bubbles up the inner revert data verbatim, so
+    // rotateSigner's ZeroSigner error surfaces directly.
+    await expect(g.executeAction(actionId)).to.be.revertedWithCustomError(g, "ZeroSigner");
   });
 });

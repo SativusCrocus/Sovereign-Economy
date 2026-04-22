@@ -28,8 +28,13 @@ contract DAESGovernor is IDAESGovernor, ReentrancyGuard {
     error AlreadyTerminal();
     error NotSelf();
     error ZeroSigner();
+    error ZeroBridgeOperator();
 
     constructor(address[5] memory signers_, address bridgeOperator_) {
+        if (bridgeOperator_ == address(0)) revert ZeroBridgeOperator();
+        for (uint256 i = 0; i < 5; i++) {
+            if (signers_[i] == address(0)) revert ZeroSigner();
+        }
         signerOf = signers_;
         bridgeOperator = bridgeOperator_;
     }
@@ -41,6 +46,7 @@ contract DAESGovernor is IDAESGovernor, ReentrancyGuard {
         bytes calldata data
     ) external {
         if (msg.sender != bridgeOperator) revert NotBridgeOperator();
+        // slither-disable-next-line timestamp
         if (_actions[actionId].stagedAt != 0) revert AlreadyStaged();
         _actions[actionId] = StagedAction({
             target: target,
@@ -72,11 +78,18 @@ contract DAESGovernor is IDAESGovernor, ReentrancyGuard {
         if (a.stagedAt == 0) revert NotStaged();
         if (a.executed || a.rejected) revert AlreadyTerminal();
         if (_popcount(a.signatureBitmap) < THRESHOLD) revert NotEnoughSigs();
+        // slither-disable-next-line timestamp
         if (block.timestamp < a.stagedAt + MIN_DELAY_S) revert TooEarly();
 
         a.executed = true;
         (bool ok, bytes memory ret) = a.target.call{value: a.value}(a.data);
-        require(ok, "call failed");
+        if (!ok) {
+            // Bubble up the inner revert so callers see the actual reason
+            // (e.g. ZeroSigner from rotateSigner) instead of a generic wrapper.
+            assembly {
+                revert(add(ret, 0x20), mload(ret))
+            }
+        }
         emit ActionExecuted(actionId, ret);
         return ret;
     }
