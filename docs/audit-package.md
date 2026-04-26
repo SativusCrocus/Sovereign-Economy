@@ -13,15 +13,17 @@ For a 1-of-3 bridge with off-chain economic logic, Trail of Bits or Spearbit is 
 ## In-scope contracts (commit SHA = `git rev-parse HEAD`)
 
 ```
-contracts/src/DAESGovernor.sol          3-of-5 multi-sig, self-gated rotateSigner
-contracts/src/BridgeExecutor.sol        FSM: IDLE → ... → EXECUTED / REJECTED
-contracts/src/SwarmConsensusOracle.sol  Signal registry + governor-gated rotatePoster
-contracts/src/CircuitBreaker.sol        Ring-buffer failure detector, guardian reset
-contracts/src/GuardianTimelock.sol      OZ TimelockController (thin wrapper, min 86400s)
-contracts/src/DAESOApp.sol              LayerZero V2 OApp, owner = governor
-contracts/src/AgentAccount.sol          EIP-4337 v0.7 smart account
-contracts/src/AgentAccountFactory.sol   CREATE2 factory, archetype-tagged
-contracts/src/mocks/MockLZEndpoint.sol  Test-only; do not deploy to any live chain
+contracts/src/DAESGovernor.sol            3-of-5 multi-sig, self-gated rotateSigner
+contracts/src/BridgeExecutor.sol          FSM: IDLE → ... → EXECUTED / REJECTED
+contracts/src/SwarmConsensusOracle.sol    Signal registry + governor-gated rotatePoster
+contracts/src/CircuitBreaker.sol          Ring-buffer failure detector, guardian reset
+contracts/src/GuardianTimelock.sol        OZ TimelockController (thin wrapper, min 86400s)
+contracts/src/DAESOApp.sol                LayerZero V2 OApp, owner = governor
+contracts/src/AgentAccount.sol            EIP-4337 v0.7 smart account
+contracts/src/AgentAccountFactory.sol     CREATE2 factory, archetype-tagged
+contracts/src/SwarmSeedVRF.sol            Chainlink VRF v2.5 seed source, governor-gated requestSeed
+contracts/src/mocks/MockLZEndpoint.sol    Test-only; do not deploy to any live chain
+contracts/src/mocks/MockVRFCoordinator.sol Test-only; do not deploy to any live chain
 ```
 
 Interfaces live in `contracts/interfaces/` and mirror the implementations. Out of scope: off-chain Python / TypeScript services, frontend, Docker Compose stack.
@@ -53,7 +55,7 @@ Tier 4 hardening beyond the self-audit:
 
 ## Test coverage handed to the auditor
 
-Hardhat suite — 28 tests in [contracts/test/](../contracts/test/).
+Hardhat suite — 36 tests in [contracts/test/](../contracts/test/).
 
 ```
 AgentAccount + Factory
@@ -98,10 +100,17 @@ CircuitBreaker
   ✔ M-1: setBridge is one-time only and guardian-gated
   ✔ M-5: failuresInWindow excludes failures at exactly t == lastReset
 
+SwarmSeedVRF
+  ✔ rejects requestSeed from non-governor
+  ✔ governor can requestSeed; state stays NoSeedYet until fulfillment
+  ✔ only the coordinator can fulfill; seed persists after fulfillment
+  ✔ rejects double-fulfillment of the same requestId
+  ✔ reverts constructor on zero coordinator or zero governor
+
 GuardianTimelock — 1 test
 ```
 
-Foundry invariant suite — 1 invariant, 64 runs × 64 depth:
+Foundry invariant suite — 2 invariants, 256 runs × 128 depth (config in [contracts/foundry.toml](../contracts/foundry.toml)):
 
 ```
 contracts/test-forge/BridgeInvariant.t.sol
@@ -110,6 +119,10 @@ contracts/test-forge/BridgeInvariant.t.sol
       the handler must have observed a full legal path:
         stage → 3-of-5 signAction → vm.warp 86400s → executeAction
         while breaker.isPaused() == false.
+  invariant_executedHas3SigsAnd86400s
+    → secondary check on the same property using sig-count + elapsed-time
+      tracking; redundant by design so a buggy handler can't silently
+      mask the primary invariant.
     → handler exposes explicit attack handlers (direct markExecuted,
       spoofed governor, no-signatures, early-exec, paused-exec).
       None reach EXECUTED; all reverts are counted (fail_on_revert=false).

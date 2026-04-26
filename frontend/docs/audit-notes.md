@@ -87,9 +87,20 @@ Beyond this self-review:
 
 ## Tooling checklist before commissioning an audit
 
-- [ ] `slither .` — static analysis (detects many H/M findings automatically)
-- [ ] `solhint "src/**/*.sol"` — style + security lints
-- [ ] `forge coverage` or `npx hardhat coverage` ≥ 90%
-- [ ] Invariant / fuzz tests (Foundry) on `BridgeExecutor` FSM transitions
-- [ ] Run against Echidna for 24h
-- [ ] Storage layout comparison between versions if you ever add proxies
+- [x] `slither .` — static analysis (zero findings expected; gated in
+      [`.github/workflows/ci.yml::slither`](../.github/workflows/ci.yml))
+- [x] `solhint "src/**/*.sol"` — style + security lints, `--max-warnings 0`
+      (gated in [`.github/workflows/ci.yml::solhint`](../.github/workflows/ci.yml))
+- [ ] `forge coverage` or `npx hardhat coverage` ≥ 90% — not yet measured;
+      track as an audit-package precondition
+- [x] Invariant / fuzz tests (Foundry) on `BridgeExecutor` FSM transitions —
+      [contracts/test-forge/BridgeInvariant.t.sol](../contracts/test-forge/BridgeInvariant.t.sol),
+      256 runs × 128 depth, gated in
+      [`.github/workflows/ci.yml::foundry-invariants`](../.github/workflows/ci.yml)
+- [x] Run against Echidna — nightly multi-hour campaign in
+      [`.github/workflows/nightly.yml::echidna-bridge`](../.github/workflows/nightly.yml).
+      Hosted-runner cap is ~5h50m; the workflow_dispatch input
+      `echidna_timeout_s` accepts 86400 (24h) on a self-hosted runner.
+      Smoke budget for PR CI lives in [contracts/echidna.yaml](../contracts/echidna.yaml).
+- [n/a] Storage layout comparison — non-upgradeable by design (see L-2);
+      contracts are not deployed behind a proxy.
