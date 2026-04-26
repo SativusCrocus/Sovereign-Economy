@@ -209,16 +209,21 @@ jobs:
           DAES_CONSOLE_DOMAIN: console.example.com
           DAES_IPFS_DOMAIN: ipfs.example.com
           DAES_IPFS_USER: ci-user
-          # DAES_IPFS_PASS_HASH is generated at runtime — keeps a real-looking
-          # bcrypt hash out of source (gitleaks would flag it otherwise).
-          DAES_IPFS_PASS_HASH: ""
           DAES_ACME_EMAIL: ops@example.com
         run: |
-          export DAES_IPFS_PASS_HASH="$(docker run --rm caddy:2.8.4-alpine caddy hash-password --plaintext ci-only-placeholder)"
+          # caddy validate doesn't expand {env.X} placeholders at site-label
+          # position (the address is parsed before runtime substitution),
+          # so pre-render the Caddyfile with sed. Bcrypt hash generated at
+          # runtime to keep a real-looking hash out of source (gitleaks would
+          # otherwise flag it).
+          DAES_IPFS_PASS_HASH="$(docker run --rm caddy:2.8.4-alpine caddy hash-password --plaintext ci-only-placeholder)"
+          cp deploy/Caddyfile /tmp/Caddyfile.rendered
+          for var in DAES_PUBLIC_DOMAIN DAES_CONSOLE_DOMAIN DAES_IPFS_DOMAIN \
+                     DAES_IPFS_USER DAES_IPFS_PASS_HASH DAES_ACME_EMAIL; do
+            sed -i "s|{env.$var}|${!var}|g" /tmp/Caddyfile.rendered
+          done
           docker run --rm \
-            -e DAES_PUBLIC_DOMAIN -e DAES_CONSOLE_DOMAIN -e DAES_IPFS_DOMAIN \
-            -e DAES_IPFS_USER -e DAES_IPFS_PASS_HASH -e DAES_ACME_EMAIL \
-            -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            -v /tmp/Caddyfile.rendered:/etc/caddy/Caddyfile:ro \
             caddy:2.8.4-alpine caddy validate --config /etc/caddy/Caddyfile
 
   compose-prod-config:
