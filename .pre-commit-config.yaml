@@ -1,0 +1,159 @@
+# .pre-commit-config.yaml — non-Claude contributor gates.
+#
+# Mirrors the checks in .claude/scripts/verify.sh so a regular
+# `git commit` from a human contributor is held to the same bar as a
+# Claude session. Install once per clone:
+#
+#   pip install pre-commit
+#   pre-commit install                       # registers commit hook
+#   pre-commit install --hook-type pre-push  # registers push hook
+#
+# Two stages:
+#   - commit  → fast checks (< 5s typical): formatting, secret scan, lint,
+#               docs-mirror, yaml syntax.
+#   - push    → heavy checks: solhint, hardhat tests, forge invariants,
+#               slither, ruff, pytest, tsc, caddy validate.
+#
+# Bypass (mirrors the Claude hook's DAES_SKIP_VERIFY=1 escape hatch):
+#   git commit --no-verify          # one-shot
+#   SKIP=hardhat-test git push      # disable a single hook
+#
+# Hooks use `language: system` so they re-use the project's installed
+# toolchain (npm scripts, foundry, slither). Contributors who don't have
+# a tool installed will fail loud — same expectation as verify.sh.
+
+default_install_hook_types: [pre-commit, pre-push]
+
+repos:
+  # ---------------------------------------------------------------------------
+  # Universal, language-agnostic hygiene (always-on at commit).
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^(contracts/(forge-out|cache|echidna-corpus|lib)|.*\.lock)/?
+      - id: end-of-file-fixer
+        exclude: ^(contracts/(forge-out|cache|echidna-corpus|lib)|.*\.lock)/?
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+        # docker-compose extension tags (!reset) have no PyYAML constructor;
+        # the docker compose CLI itself validates this file in CI via the
+        # `compose-prod-config` job in .github/workflows/ci.yml.
+        exclude: ^deploy/docker-compose\.prod\.yaml$
+      - id: check-json
+        exclude: ^contracts/(forge-out|cache|artifacts)/
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=512]
+        exclude: ^(contracts/abi/|frontend/public/|docs/assets/)
+
+  # ---------------------------------------------------------------------------
+  # Secret scanning — same gitleaks as the Claude hook, but driven via the
+  # gitleaks pre-commit integration so contributors don't need a binary.
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+
+  # ---------------------------------------------------------------------------
+  # Project-specific local hooks. Each one mirrors a section of
+  # .claude/scripts/verify.sh — keep them in sync when verify.sh changes.
+  # ---------------------------------------------------------------------------
+  - repo: local
+    hooks:
+
+      # ---- commit-stage (fast) -------------------------------------------
+
+      - id: docs-mirror
+        name: docs/ ↔ frontend/docs/ in sync
+        description: |
+          Canonical docs live in docs/. The frontend bundles a copy under
+          frontend/docs/. They must be byte-identical — verify.sh has caught
+          stale-mirror bugs twice. Run `make docs-sync` to fix.
+        entry: bash scripts/docs-sync.sh --check
+        language: system
+        pass_filenames: false
+        files: ^(docs|frontend/docs)/.*\.md$
+        stages: [pre-commit]
+
+      - id: yamllint
+        name: yamllint (lenient)
+        # Same loosened rules as verify.sh:170 — disable line-length,
+        # document-start, truthy (which trips on `on: [push]`).
+        # Outer single-quotes keep the inline YAML config rules from
+        # being parsed by pre-commit's YAML loader.
+        entry: 'yamllint -d "{rules: {line-length: disable, document-start: disable, truthy: disable}}"'
+        language: system
+        files: \.(ya?ml)$
+        # docker-compose !reset extension tags can't be linted by yamllint;
+        # check-yaml above with --unsafe handles them.
+        exclude: ^deploy/docker-compose\.prod\.yaml$
+        stages: [pre-commit]
+
+      # ---- push-stage (heavy) --------------------------------------------
+
+      - id: solhint
+        name: solhint (--max-warnings 0)
+        entry: bash -c 'cd contracts && npx --no-install solhint --max-warnings 0 "src/**/*.sol"'
+        language: system
+        pass_filenames: false
+        files: ^contracts/(src|test|interfaces|test-forge)/.*\.(sol|ts)$
+        stages: [pre-push]
+
+      - id: hardhat-test
+        name: hardhat test
+        entry: bash -c 'cd contracts && npx --no-install hardhat test'
+        language: system
+        pass_filenames: false
+        files: ^contracts/(src|test|interfaces|test-forge)/.*\.(sol|ts)$
+        stages: [pre-push]
+
+      - id: forge-invariants
+        name: forge test (invariants)
+        entry: bash -c 'cd contracts && forge test --match-path "test-forge/**"'
+        language: system
+        pass_filenames: false
+        files: ^contracts/(src|test-forge)/.*\.sol$
+        stages: [pre-push]
+
+      - id: slither
+        name: slither (zero findings expected)
+        entry: bash -c 'cd contracts && slither .'
+        language: system
+        pass_filenames: false
+        files: ^contracts/(src|interfaces)/.*\.sol$
+        stages: [pre-push]
+
+      - id: ruff
+        name: ruff check (agent-swarm-runtime)
+        entry: bash -c 'cd services/agent-swarm-runtime && ruff check .'
+        language: system
+        pass_filenames: false
+        files: ^services/agent-swarm-runtime/.*\.py$
+        stages: [pre-push]
+
+      - id: pytest-swarm-runtime
+        name: pytest (agent-swarm-runtime)
+        entry: bash -c 'cd services/agent-swarm-runtime && pytest -x -q'
+        language: system
+        pass_filenames: false
+        files: ^services/agent-swarm-runtime/.*\.py$
+        stages: [pre-push]
+
+      - id: tsc-goose-executor
+        name: tsc --noEmit (goose-executor)
+        entry: bash -c 'cd services/goose-executor && npx --no-install tsc --noEmit'
+        language: system
+        pass_filenames: false
+        files: ^services/goose-executor/.*\.(ts|tsx|js)$
+        stages: [pre-push]
+
+      - id: caddy-validate
+        name: caddy validate
+        entry: bash scripts/caddy-validate.sh
+        language: system
+        pass_filenames: false
+        files: (^|/)Caddyfile$
+        stages: [pre-push]

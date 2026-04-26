@@ -1,5 +1,9 @@
 # Secrets & local state
 deploy/.env
+deploy/.env.staging
+deploy/.staging-last-good
+deploy/.prod-last-good
+deploy/.prod-prev
 deploy/tls/*.key
 deploy/tls/*.crt
 deploy/secrets/

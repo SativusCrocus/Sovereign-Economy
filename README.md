@@ -190,6 +190,25 @@ Sovereign Economy/
 └── .gitignore
 ```
 
+## Contributing
+
+Two pre-commit gating systems run the same checks; pick the one matching
+how you commit:
+
+- Inside Claude Code — the [Claude verify hook](.claude/scripts/verify.sh)
+  fires automatically before every `git commit` / `git push`.
+- Outside Claude Code — install [pre-commit](https://pre-commit.com)
+  via [.pre-commit-config.yaml](.pre-commit-config.yaml):
+  ```bash
+  pip install pre-commit
+  pre-commit install
+  pre-commit install --hook-type pre-push
+  ```
+
+Full setup, tool-list, and bypass-switch documentation in
+[CONTRIBUTING.md](CONTRIBUTING.md). For the deploy / promote / rollback
+lifecycle, see [docs/runbook.md](docs/runbook.md).
+
 ## Production hardening checklist
 
 The dev compose is deliberately permissive. For prod:

@@ -21,9 +21,10 @@ help:  ## Show this help.
 	@awk 'BEGIN{FS=":.*## "} /^[a-zA-Z_-]+:.*## / {printf "  \033[36m%-22s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 	@printf '\nExamples:\n'
 	@printf '  make verify           # run scoped checks against staged changes\n'
-	@printf '  make preflight        # validate prod-deploy readiness\n'
-	@printf '  make staging-up       # bring up the prod overlay locally\n'
-	@printf '  make smoke            # post-deploy health checks\n'
+	@printf '  make preflight        # validate deploy readiness (default staging)\n'
+	@printf '  make deploy-staging   # build HEAD, up staging, smoke\n'
+	@printf '  make promote-prod     # promote .staging-last-good to prod\n'
+	@printf '  make rollback         # roll prod back to .prod-prev\n'
 
 # ----------------------------------------------------------------------------
 # Verification — same checks as the Claude pre-commit hook
@@ -80,24 +81,45 @@ ipfs-pass:  ## Hash the IPFS HTTP-gateway password and write it into deploy/.env
 # ----------------------------------------------------------------------------
 # Deploy lifecycle
 # ----------------------------------------------------------------------------
-.PHONY: preflight smoke staging-up staging-down logs
-preflight:  ## Validate prod-deploy readiness (env, DNS, swarm.key, compose merge).
-	@bash "$(ROOT)"/scripts/preflight.sh
+# Two env files drive two environments off the same compose overlays:
+#   deploy/.env.staging  → staging  (rehearsal, testnet RPCs)
+#   deploy/.env          → prod     (mainnet-eligible)
+# See docs/runbook.md for the full lifecycle.
+ENV_STAGING := $(ROOT)/deploy/.env.staging
+ENV_PROD    := $(ROOT)/deploy/.env
+
+# Override on the command line: `make logs ENV_FILE=deploy/.env`.
+ENV_FILE ?= $(ENV_STAGING)
+
+# Compose merge used by every lifecycle verb below.
+COMPOSE_FILES := -f $(ROOT)/deploy/docker-compose.yaml \
+                 -f $(ROOT)/deploy/docker-compose.prod.yaml \
+                 -f $(ROOT)/deploy/docker-compose.tagged.yaml
+
+.PHONY: preflight smoke deploy-staging promote-prod rollback staging-up staging-down logs
+preflight:  ## Validate deploy readiness (env, DNS, swarm.key, compose merge).
+	@ENV_FILE="$(ENV_FILE)" bash "$(ROOT)"/scripts/preflight.sh
 
 smoke:  ## Post-deploy smoke tests (Caddy, mcp-gateway, IPFS, VRF).
-	@bash "$(ROOT)"/scripts/post-deploy-smoke.sh
+	@ENV_FILE="$(ENV_FILE)" bash "$(ROOT)"/scripts/post-deploy-smoke.sh
 
-staging-up:  ## Bring up dev compose + prod overlay locally.
-	@docker compose -f "$(ROOT)"/deploy/docker-compose.yaml \
-	                 -f "$(ROOT)"/deploy/docker-compose.prod.yaml \
-	                 --env-file "$(ROOT)"/deploy/.env up -d --build
+deploy-staging:  ## Build HEAD (or SHA=…) and bring up staging; record .staging-last-good on green smoke.
+	@bash "$(ROOT)"/deploy/deploy-staging.sh $(SHA)
+
+promote-prod:  ## Promote .staging-last-good (or SHA=…) to prod after gates pass.
+	@bash "$(ROOT)"/deploy/promote-to-prod.sh $(SHA)
+
+rollback:  ## Roll prod back to .prod-prev (or SHA=…); requires images present locally.
+	@bash "$(ROOT)"/deploy/rollback.sh $(SHA)
+
+staging-up:  ## Manual: bring up staging without running deploy-staging.sh.
+	@DAES_TAG=$$(git -C "$(ROOT)" rev-parse --short=12 HEAD) \
+	  docker compose $(COMPOSE_FILES) --env-file "$(ENV_STAGING)" up -d --build
 
 staging-down:  ## Tear down the staging stack (keeps volumes).
-	@docker compose -f "$(ROOT)"/deploy/docker-compose.yaml \
-	                 -f "$(ROOT)"/deploy/docker-compose.prod.yaml \
-	                 --env-file "$(ROOT)"/deploy/.env down
+	@DAES_TAG=$$(git -C "$(ROOT)" rev-parse --short=12 HEAD) \
+	  docker compose $(COMPOSE_FILES) --env-file "$(ENV_STAGING)" down
 
-logs:  ## Tail logs across the staging stack.
-	@docker compose -f "$(ROOT)"/deploy/docker-compose.yaml \
-	                 -f "$(ROOT)"/deploy/docker-compose.prod.yaml \
-	                 --env-file "$(ROOT)"/deploy/.env logs -f --tail=200
+logs:  ## Tail logs across the active stack (default staging; ENV_FILE=deploy/.env for prod).
+	@DAES_TAG=$$(git -C "$(ROOT)" rev-parse --short=12 HEAD) \
+	  docker compose $(COMPOSE_FILES) --env-file "$(ENV_FILE)" logs -f --tail=200

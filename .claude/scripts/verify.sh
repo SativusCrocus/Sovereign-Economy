@@ -171,19 +171,9 @@ if [[ -n "$YAML_FILES" ]]; then
 fi
 
 if has_changes '(^|/)Caddyfile$'; then
-  if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
-    run_check "caddy validate" docker run --rm \
-      -e DAES_PUBLIC_DOMAIN=example.com \
-      -e DAES_CONSOLE_DOMAIN=console.example.com \
-      -e DAES_IPFS_DOMAIN=ipfs.example.com \
-      -e DAES_IPFS_USER=u \
-      -e DAES_IPFS_PASS_HASH='$2a$14$exampleexampleexampleexampleexampleexampleexampleexample' \
-      -e DAES_ACME_EMAIL=ops@example.com \
-      -v "$REPO_ROOT/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" \
-      caddy:2.8.4-alpine caddy validate --config /etc/caddy/Caddyfile
-  else
-    log "caddy validate: docker not available — skipping"
-  fi
+  # Shared with the pre-commit hook (.pre-commit-config.yaml#caddy-validate)
+  # so verify.sh and human contributors run the exact same check.
+  run_check "caddy validate" bash "$REPO_ROOT/scripts/caddy-validate.sh"
 fi
 
 log "all checks passed — proceeding"

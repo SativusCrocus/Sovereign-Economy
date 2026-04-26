@@ -1,0 +1,26 @@
+{
+  "_comment_purpose": "Config for markdown-link-check, consumed by .github/workflows/nightly.yml. ignorePatterns: regex list of URL prefixes the checker must not fetch (placeholders, internal-only hostnames, faucets that throttle CI). aliveStatusCodes: 403 + 429 are treated as 'alive' so a Cloudflare WAF or rate-limit bounce doesn't fail the build. Schema: https://github.com/tcort/markdown-link-check#config-file-format",
+
+  "ignorePatterns": [
+    { "pattern": "^https?://(localhost|127\\.0\\.0\\.1|0\\.0\\.0\\.0|host\\.docker\\.internal)" },
+    { "pattern": "^https?://[^/]*\\.internal(/|$)" },
+    { "pattern": "^https?://[^/]*\\.example(/|$)" },
+    { "pattern": "^https?://(www\\.)?alchemy\\.com/faucets/" },
+    { "pattern": "^https?://(gateway\\.)?(pinata|web3)\\.storage/" }
+  ],
+
+  "httpHeaders": [
+    {
+      "urls": ["https://github.com/", "https://docs.github.com/"],
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; daes-link-check/1.0)"
+      }
+    }
+  ],
+
+  "timeout": "20s",
+  "retryOn429": true,
+  "retryCount": 3,
+  "fallbackRetryDelay": "10s",
+  "aliveStatusCodes": [200, 206, 301, 302, 308, 403, 429]
+}

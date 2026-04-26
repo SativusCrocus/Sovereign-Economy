@@ -1,0 +1,38 @@
+# deploy/docker-compose.tagged.yaml — sha-stamped image tags overlay.
+#
+# `docker compose build` defaults to tagging built images with a project
+# name slug like `daes-mcp-gateway:latest`. That makes rollback impossible
+# because `latest` is overwritten on every build.
+#
+# This overlay assigns each locally-built service an explicit
+# `image: daes-<service>:${DAES_TAG}` so deploy-staging.sh can stamp every
+# build with the git sha, and rollback.sh can `docker compose up` a prior
+# tag without rebuilding. Pre-built images (caddy, weaviate, prom, grafana,
+# geth, ipfs/kubo) are not overridden — those are pinned upstream.
+#
+# Usage (always via the deploy/*.sh scripts; not invoked directly):
+#   DAES_TAG=$sha docker compose \
+#     -f deploy/docker-compose.yaml \
+#     -f deploy/docker-compose.prod.yaml \
+#     -f deploy/docker-compose.tagged.yaml \
+#     --env-file <env> up -d --build
+#
+# Compose interprets `image:` + `build:` together as: build, then tag.
+# So a fresh build writes daes-mcp-gateway:<sha>, and a rollback that omits
+# --build pulls the existing local tag.
+
+services:
+  rag-ingester:
+    image: daes-rag-ingester:${DAES_TAG:?DAES_TAG required - set to git sha}
+
+  agent-swarm-runtime:
+    image: daes-agent-swarm-runtime:${DAES_TAG:?DAES_TAG required - set to git sha}
+
+  goose-executor:
+    image: daes-goose-executor:${DAES_TAG:?DAES_TAG required - set to git sha}
+
+  mcp-gateway:
+    image: daes-mcp-gateway:${DAES_TAG:?DAES_TAG required - set to git sha}
+
+  frontend:
+    image: daes-frontend:${DAES_TAG:?DAES_TAG required - set to git sha}
