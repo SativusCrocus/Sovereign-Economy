@@ -132,9 +132,144 @@ jobs:
       - run: npm ci || npm install
       - run: npx tsc --noEmit
 
+  # ---------------------------------------------------------------------------
+  # Security & lint gates (Plan C). All must pass before docker-build runs.
+  # ---------------------------------------------------------------------------
+
+  slither:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: contracts } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: contracts/package-lock.json
+      - uses: foundry-rs/foundry-toolchain@v1
+        with: { version: stable }
+      - name: Install dependencies
+        run: |
+          npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+          pip install slither-analyzer==0.11.5
+          mkdir -p lib
+          if [ ! -d lib/forge-std ]; then
+            git clone --depth 1 https://github.com/foundry-rs/forge-std lib/forge-std
+          fi
+      - name: Run slither (zero findings expected)
+        run: slither .
+
+  solhint:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: contracts } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: contracts/package-lock.json
+      - run: npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+      - name: Run solhint (0 errors, 0 warnings)
+        run: npx solhint --max-warnings 0 "src/**/*.sol"
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  docs-mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify docs/ and frontend/docs/ are byte-identical
+        run: |
+          fail=0
+          for f in audit-notes.md architecture.md; do
+            if ! diff -q "docs/$f" "frontend/docs/$f" >/dev/null 2>&1; then
+              echo "::error file=frontend/docs/$f::out of sync with docs/$f — copy canonical docs/$f over to frontend/docs/$f"
+              fail=1
+            fi
+          done
+          [ "$fail" = "0" ] && echo "all docs mirrored ✓" || exit 1
+
+  caddy-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate deploy/Caddyfile against the prod env shape
+        env:
+          DAES_PUBLIC_DOMAIN: example.com
+          DAES_CONSOLE_DOMAIN: console.example.com
+          DAES_IPFS_DOMAIN: ipfs.example.com
+          DAES_IPFS_USER: ci-user
+          # DAES_IPFS_PASS_HASH is generated at runtime — keeps a real-looking
+          # bcrypt hash out of source (gitleaks would flag it otherwise).
+          DAES_IPFS_PASS_HASH: ""
+          DAES_ACME_EMAIL: ops@example.com
+        run: |
+          export DAES_IPFS_PASS_HASH="$(docker run --rm caddy:2.8.4-alpine caddy hash-password --plaintext ci-only-placeholder)"
+          docker run --rm \
+            -e DAES_PUBLIC_DOMAIN -e DAES_CONSOLE_DOMAIN -e DAES_IPFS_DOMAIN \
+            -e DAES_IPFS_USER -e DAES_IPFS_PASS_HASH -e DAES_ACME_EMAIL \
+            -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            caddy:2.8.4-alpine caddy validate --config /etc/caddy/Caddyfile
+
+  compose-prod-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Render compose.yaml + compose.prod.yaml to verify the merge
+        env:
+          # Mirror the env shape every prod operator must populate. Values
+          # are placeholders — `docker compose config` only needs them
+          # defined, not real.
+          DAES_PUBLIC_DOMAIN: example.com
+          DAES_CONSOLE_DOMAIN: console.example.com
+          DAES_IPFS_DOMAIN: ipfs.example.com
+          DAES_IPFS_USER: ci-user
+          # DAES_IPFS_PASS_HASH is generated at runtime — keeps a real-looking
+          # bcrypt hash out of source (gitleaks would flag it otherwise).
+          DAES_IPFS_PASS_HASH: ""
+          DAES_ACME_EMAIL: ops@example.com
+          WEAVIATE_API_KEY: x
+          MCP_JWT: x
+          MCP_JWT_SECRET: x
+          BASE_RPC_URL: https://x.example
+          OP_RPC_URL: https://x.example
+          GRAFANA_ADMIN_PASSWORD: x
+        run: |
+          export DAES_IPFS_PASS_HASH="$(docker run --rm caddy:2.8.4-alpine caddy hash-password --plaintext ci-only-placeholder)"
+          # The ipfs service bind-mounts deploy/ipfs/swarm.key. `compose
+          # config` parses YAML without touching the filesystem, but
+          # generating a placeholder keeps any future stricter validation
+          # working.
+          bash deploy/ipfs/generate-swarm-key.sh
+          docker compose \
+            -f deploy/docker-compose.yaml \
+            -f deploy/docker-compose.prod.yaml \
+            config --quiet
+
   docker-build:
     runs-on: ubuntu-latest
-    needs: [spec-and-config, contracts, foundry-invariants, python-services, goose-executor]
+    needs:
+      - spec-and-config
+      - contracts
+      - foundry-invariants
+      - python-services
+      - goose-executor
+      - slither
+      - solhint
+      - gitleaks
+      - docs-mirror
+      - caddy-validate
+      - compose-prod-config
     strategy:
       matrix:
         service:
